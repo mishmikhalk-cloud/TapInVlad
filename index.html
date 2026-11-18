@@ -32,21 +32,19 @@
     width:min(55vw,220px);cursor:pointer;
     filter:drop-shadow(0 12px 40px rgba(255,225,77,.4));
     transition:filter .2s;will-change:transform;
-    /* Важно для мобилок: отключает задержку клика и зум */
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
-    -webkit-touch-callout: none; /* убирает меню при долгом нажатии на iOS */
+    -webkit-touch-callout: none;
   }
   
-  /* Убираем hover на устройствах без мыши */
   @media (hover: hover) {
     .target:hover{filter:drop-shadow(0 12px 55px rgba(255,225,77,.7));}
   }
   
   .target img,.target svg{
     display:block;width:100%;height:auto;
-    pointer-events:none; /* клик проходит сквозь картинку на родителя */
+    pointer-events:none; 
     border-radius:20px;
   }
   .target.pop{animation:pop .12s ease;}
@@ -85,8 +83,8 @@
   <div class="stage" id="stage">
     <div class="glow"></div>
     <div class="target" id="target">
-     <!-- Замени на свою картинку, если нужно -->
-     <img src="TapInVlad.jpg" alt="Влад">
+     <!-- ВОТ ЗДЕСЬ ИЗМЕНЕНО ИМЯ КАРТИНКИ -->
+     <img src="Vlad.png.jpg" alt="Влад">
     </div>
   </div>
 
@@ -157,7 +155,6 @@ function render(bump = false) {
   }
 }
 
-// --- ЗВУК (с фиксом для мобильных устройств) ---
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) {
@@ -225,17 +222,16 @@ function doClick(x, y) {
   saveScore();
 }
 
-// --- ОБРАБОТКА КЛИКОВ / ТАПОВ ---
-// Используем pointerdown для мгновенной реакции (без задержки 300мс)
+// Обработка для телефонов (тапы)
 els.target.addEventListener('pointerdown', e => {
-  e.preventDefault(); // Отменяет выделение, зум и прочие дефолтные действия
-  initAudio();        // Разблокируем звук при первом тапе
+  e.preventDefault(); 
+  initAudio();        
   
   const r = els.stage.getBoundingClientRect();
   doClick(e.clientX - r.left, e.clientY - r.top);
 }, { passive: false });
 
-// Дополнительная подстраховка для старых устройств, где pointerdown может глючить
+// Страховка для старых телефонов
 els.target.addEventListener('touchstart', e => {
   e.preventDefault();
   initAudio();
