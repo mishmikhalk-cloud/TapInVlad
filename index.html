@@ -12,12 +12,13 @@
     font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
     background:radial-gradient(circle at 50% 0%,#2b3a67 0%,#11152b 55%,#070912 100%);
     color:#fff;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:24px;padding:20px;user-select:none;
+    justify-content:center;gap:20px;padding:20px;user-select:none;
     touch-action:manipulation;min-height:100dvh;
   }
   
+  /* Уменьшил шрифт с 64px до 48px */
   .score{
-    font-size:64px;font-weight:900;color:#FFE14D;
+    font-size:48px;font-weight:900;color:#FFE14D;
     text-shadow:0 0 30px rgba(255,225,77,.6);
     line-height:1;transition:transform .1s;text-align:center;
   }
@@ -27,8 +28,10 @@
          opacity:.5;margin-top:6px;text-align:center;}
          
   .stage{position:relative;display:flex;justify-content:center;}
+  
+  /* Уменьшил картинку: было min(70vw, 280px), стало min(55vw, 220px) */
   .target{
-    width:min(70vw,280px);cursor:pointer;
+    width:min(55vw,220px);cursor:pointer;
     filter:drop-shadow(0 12px 40px rgba(255,225,77,.4));
     transition:filter .2s;will-change:transform;
   }
@@ -50,7 +53,7 @@
   @keyframes burst{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0;}}
   .floater{
     position:absolute;pointer-events:none;transform:translate(-50%,-50%);
-    font-weight:900;font-size:26px;color:#fff;
+    font-weight:900;font-size:24px;color:#fff; /* Чуть уменьшил всплывающий +1 */
     text-shadow:0 0 12px #FFE14D,0 0 26px #FFE14D;
     animation:floatUp .9s ease-out forwards;
   }
@@ -68,8 +71,8 @@
   <div class="stage" id="stage">
     <div class="glow"></div>
     <div class="target" id="target">
-     <!-- ВАЖНО: Проверь название файла ниже. Оно должно точно совпадать с тем, что на GitHub -->
-     <img src="Vlad.png.jpg" alt="Влад">
+     <!-- ВАЖНО: Убедись, что название файла картинки совпадает -->
+     <img src="TapInVlad.jpg" alt="Влад">
     </div>
   </div>
 
@@ -93,7 +96,6 @@ const els = {
 };
 
 const STORAGE_KEY = 'tap-score-v3'; 
-// Теперь score хранит только целые числа (за клики)
 let state = { score: 0, perClick: 1 };
 
 function loadScore() {
