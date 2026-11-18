@@ -16,34 +16,13 @@
     touch-action:manipulation;min-height:100dvh;
   }
   
-  /* Обертка для счёта и дохода в час */
-  .score-container {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 5px;
-  }
-
   .score{
     font-size:64px;font-weight:900;color:#FFE14D;
     text-shadow:0 0 30px rgba(255,225,77,.6);
     line-height:1;transition:transform .1s;text-align:center;
   }
   .score.bump{transform:scale(1.15);}
-
-  .per-hour {
-    font-size: 16px;
-    color: #4ade80;
-    font-weight: 700;
-    background: rgba(74, 222, 128, 0.1);
-    padding: 6px 12px;
-    border-radius: 20px;
-    margin-bottom: 10px;
-    border: 1px solid rgba(74, 222, 128, 0.3);
-    white-space: nowrap;
-  }
-
+  
   .label{font-size:12px;letter-spacing:.2em;text-transform:uppercase;
          opacity:.5;margin-top:6px;text-align:center;}
          
@@ -82,17 +61,15 @@
 <body>
 
   <div>
-    <div class="score-container">
-      <div class="score" id="score">0</div>
-      <div class="per-hour">⚡ <span id="perHour">100</span> в час</div>
-    </div>
+    <div class="score" id="score">0</div>
     <div class="label">Тапни по картинке</div>
   </div>
 
   <div class="stage" id="stage">
     <div class="glow"></div>
     <div class="target" id="target">
-     <img src="Vlad.png.jpg" alt="Влад">
+     <!-- ВАЖНО: Проверь название файла ниже. Оно должно точно совпадать с тем, что на GitHub -->
+     <img src="TapInVlad.jpg" alt="Влад">
     </div>
   </div>
 
@@ -112,33 +89,23 @@ const $ = id => document.getElementById(id);
 const els = { 
   score:$('score'), 
   stage:$('stage'), 
-  target:$('target'),
-  perHour:$('perHour')
+  target:$('target')
 };
 
-const STORAGE_KEY = 'tap-score-v2'; // Поменял версию ключа, так как изменилась логика сохранения
-// score теперь хранит дробное значение, чтобы пассивный доход был точным
-let state = { score: 0.0, perClick: 1 };
-
-// Настройка пассивного дохода: 100 монет в час
-const PER_HOUR = 100;
-const PER_SECOND = PER_HOUR / 3600; // ~0.02777 монет в секунду
-els.perHour.textContent = PER_HOUR;
-
-let lastTick = Date.now();
+const STORAGE_KEY = 'tap-score-v3'; 
+// Теперь score хранит только целые числа (за клики)
+let state = { score: 0, perClick: 1 };
 
 function loadScore() {
   const onLoad = (dataStr) => {
     if (dataStr) {
       try {
         const parsed = JSON.parse(dataStr);
-        // Обязательно приводим к числу, так как могли сохраниться строки
-        state.score = parseFloat(parsed.score) || 0;
+        state.score = parseInt(parsed.score) || 0;
         state.perClick = parseInt(parsed.perClick) || 1;
       } catch(e){}
     }
     render();
-    lastTick = Date.now();
   };
 
   if (tg?.CloudStorage) {
@@ -164,8 +131,7 @@ function saveScore() {
   }, 400);
 }
 
-// Функция отображения: floor нужен, чтобы на экране были целые числа, пока копятся дробные
-const fmt = n => Math.floor(n).toLocaleString('ru-RU');
+const fmt = n => n.toLocaleString('ru-RU');
 function render(bump = false) {
   els.score.textContent = fmt(state.score);
   if (bump) {
@@ -175,20 +141,6 @@ function render(bump = false) {
   }
 }
 
-// --- ПАССИВНЫЙ ДОХОД ---
-// Запускаем цикл каждые 100 мс, чтобы счёт рос плавно
-setInterval(() => {
-  const now = Date.now();
-  const delta = (now - lastTick) / 1000; // сколько секунд прошло
-  lastTick = now;
-  
-  if (delta > 0) {
-    state.score += PER_SECOND * delta;
-    render(); // Обновляем текст на экране (без анимации прыжка)
-  }
-}, 100);
-
-// --- ЗВУК ---
 let audioCtx = null;
 function playSound() {
   try {
@@ -235,7 +187,7 @@ function spawnFloater(x, y) {
 }
 
 function doClick(x, y) {
-  state.score += state.perClick; // +1 за тап
+  state.score += state.perClick;
   render(true);
   spawnParticles(x, y);
   spawnFloater(x, y);
@@ -254,7 +206,6 @@ els.target.addEventListener('pointerdown', e => {
 
 loadScore();
 
-// Сохраняем при закрытии
 window.addEventListener('beforeunload', saveScore);
 </script>
 </body>
