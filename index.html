@@ -5,303 +5,147 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Тапалка</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;margin:0;overflow:hidden;}
   body{
     font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
     background:radial-gradient(circle at 50% 0%,#2b3a67 0%,#11152b 55%,#070912 100%);
-    color:#fff;display:flex;flex-direction:column;user-select:none;
-    touch-action:manipulation;height:100dvh;
+    color:#fff;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:20px;padding:20px;user-select:none;
+    touch-action:manipulation;min-height:100dvh;
   }
-
-  /* --- ОБЩИЕ ЭКРАНЫ --- */
-  .view {
-    display: none; flex-direction: column; align-items: center;
-    justify-content: center; flex: 1; padding: 20px;
-    padding-bottom: 90px; 
-  }
-  .view.active { display: flex; }
-
-  /* --- ГЛАВНЫЙ ЭКРАН --- */
+  
   .score{
     font-size:48px;font-weight:900;color:#FFE14D;
     text-shadow:0 0 30px rgba(255,225,77,.6);
-    line-height:1;transition:transform .1s;text-align:center;margin-top: 10px;
+    line-height:1;transition:transform .1s;text-align:center;
   }
   .score.bump{transform:scale(1.15);}
-  .label{font-size:12px;letter-spacing:.2em;text-transform:uppercase;opacity:.5;margin-top:6px;text-align:center;}
   
-  /* Контейнер для картинки */
-  .stage{
-    position:relative; display:flex; justify-content:center; align-items:center;
-    margin-top: 20px; width: min(60vw, 250px); height: min(60vw, 250px);
-    cursor: pointer; touch-action: manipulation;
+  .label{font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+         opacity:.5;margin-top:6px;text-align:center;}
+         
+  .stage{position:relative;display:flex;justify-content:center;}
+  
+  .target{
+    width:min(55vw,220px);cursor:pointer;
+    filter:drop-shadow(0 12px 40px rgba(255,225,77,.4));
+    transition:filter .2s;will-change:transform;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
+  
+  @media (hover: hover) {
+    .target:hover{filter:drop-shadow(0 12px 55px rgba(255,225,77,.7));}
+  }
+  
+  .target img,.target svg{
+    display:block;width:100%;height:auto;
+    pointer-events:none; 
+    border-radius:20px;
+  }
+  .target.pop{animation:pop .12s ease;}
+  @keyframes pop{50%{transform:scale(.93);}}
   
   .glow{
     position:absolute;inset:-15%;z-index:-1;pointer-events:none;
     background:radial-gradient(circle,rgba(255,225,77,.3),transparent 65%);
-    animation:pulse 2.4s ease-in-out infinite; border-radius: 50%;
+    animation:pulse 2.4s ease-in-out infinite;
   }
   @keyframes pulse{50%{transform:scale(1.12);opacity:.6;}}
   
-  .target-img {
-    display: block; width: 100%; height: 100%; object-fit: cover;
-    border-radius: 20px; pointer-events: none; 
-    transition: filter 0.3s, transform 0.1s;
+  .particle{
+    position:absolute;border-radius:50%;pointer-events:none;
+    animation:burst .7s ease-out forwards;
   }
-  
-  .stage:active .target-img { transform: scale(0.92); }
-
-  /* Частицы и текст */
-  .particle{position:absolute;border-radius:50%;pointer-events:none;animation:burst .7s ease-out forwards;}
   @keyframes burst{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0;}}
+  
   .floater{
     position:absolute;pointer-events:none;transform:translate(-50%,-50%);
-    font-weight:900;font-size:24px;color:#fff;text-shadow:0 0 12px #FFE14D,0 0 26px #FFE14D;
+    font-weight:900;font-size:24px;color:#fff;
+    text-shadow:0 0 12px #FFE14D,0 0 26px #FFE14D;
     animation:floatUp .9s ease-out forwards;
   }
   @keyframes floatUp{to{transform:translate(-50%,-160%) scale(1.4);opacity:0;}}
-  .hint{font-size:12px;opacity:.35;text-align:center;margin-top: 20px;}
-
-  /* --- МАГАЗИН --- */
-  .shop-title, .leaders-title { font-size: 24px; font-weight: bold; color: #FFE14D; margin-bottom: 20px; width: 100%; text-align: left;}
-  .shop-grid { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; overflow-y: auto; padding-bottom: 20px;}
-  .shop-item {
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-    padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center;
-  }
-  .shop-item-info h3 { margin: 0 0 5px 0; font-size: 16px; }
-  .shop-item-info p { margin: 0; font-size: 12px; color: #aaa; }
-  .buy-btn {
-    background: #FFE14D; color: #000; border: none; padding: 8px 15px;
-    border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; white-space: nowrap;
-  }
-  .buy-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
-  .buy-btn.bought { background: #4ade80; color: #000; }
-
-  /* --- ЛИДЕРЫ --- */
-  #topList { list-style: none; padding: 0; margin: 0; width: 100%; max-width: 400px; overflow-y: auto;}
-  #topList li {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px; margin-bottom: 8px; border-radius: 12px;
-    background: rgba(255,255,255,0.05); font-size: 15px;
-  }
-  #topList li:nth-child(1) { background: rgba(255, 215, 0, 0.2); border: 1px solid #FFD700; }
-  #topList li:nth-child(2) { background: rgba(192, 192, 192, 0.15); border: 1px solid #C0C0C0; }
-  #topList li:nth-child(3) { background: rgba(205, 127, 50, 0.15); border: 1px solid #CD7F32; }
-  .rank { font-weight: 900; width: 30px; text-align: center; }
-  .player-name { flex: 1; margin-left: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .player-score { font-weight: 900; color: #FFE14D; }
-
-  /* --- НИЖНЕЕ МЕНЮ --- */
-  .bottom-nav {
-    position: fixed; bottom: 0; left: 0; width: 100%; height: 70px;
-    background: rgba(17, 21, 43, 0.95); backdrop-filter: blur(10px);
-    display: flex; justify-content: space-around; align-items: center;
-    border-top: 1px solid rgba(255,255,255,0.1); z-index: 100;
-  }
-  .nav-btn {
-    background: transparent; border: none; color: #888;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-    font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s;
-    width: 33%; height: 100%; justify-content: center;
-  }
-  .nav-btn.active { color: #FFE14D; }
-  .nav-btn .icon { font-size: 24px; }
-  .nav-btn.hidden { visibility: hidden; }
-
-  /* --- АДМИНКА --- */
-  #adminBtn {
-    display: none; position: fixed; top: 15px; right: 15px;
-    background: rgba(255, 225, 77, 0.2); border: 1px solid #FFE14D;
-    color: #FFE14D; padding: 8px 12px; border-radius: 10px;
-    font-weight: bold; cursor: pointer; z-index: 100;
-  }
-  .modal {
-    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); z-index: 999; padding: 20px;
-    flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);
-  }
-  .modal-content {
-    background: #11152b; border: 1px solid rgba(255, 225, 77, 0.3);
-    padding: 20px; border-radius: 20px; width: 100%; max-width: 350px;
-  }
-  .modal h2 { color: #FFE14D; margin-bottom: 15px; text-align: center; }
-  .close-btn { margin-top: 15px; text-align: center; color: #ff6b9d; cursor: pointer; font-weight: bold; }
-  .search-box { display: flex; gap: 10px; margin-bottom: 15px; }
-  .search-box input { flex: 1; padding: 10px; border-radius: 8px; border: none; background: #2b3a67; color: white; }
-  .search-box button { padding: 10px 15px; border-radius: 8px; border: none; background: #FFE14D; color: #000; font-weight: bold; }
-  #searchResult { text-align: center; display: none; }
+  .hint{font-size:12px;opacity:.35;text-align:center;}
 </style>
 </head>
 <body>
 
-  <button id="adminBtn" onclick="openModal('adminModal')">⚙️ Админ</button>
-
-  <!-- ЭКРАН 1: ТАПАЛКА -->
-  <div id="view-tap" class="view active">
+  <div>
     <div class="score" id="score">0</div>
     <div class="label">Тапни по картинке</div>
-    
-    <!-- Контейнер для кликов -->
-    <div class="stage" id="stage">
-      <div class="glow" id="glow"></div>
-      <!-- ВАЖНО: Проверь, что картинка лежит в корне и называется Vlad.png.jpg -->
-      <img class="target-img" id="mainImage" src="Vlad.png.jpg" alt="Влад">
-    </div>
-    
-    <div class="hint">Прогресс сохраняется автоматически</div>
   </div>
 
-  <!-- ЭКРАН 2: МАГАЗИН -->
-  <div id="view-shop" class="view">
-    <div class="shop-title">🛒 Магазин</div>
-    <div class="shop-grid" id="shopGrid"></div>
-  </div>
-
-  <!-- ЭКРАН 3: ЛИДЕРЫ -->
-  <div id="view-leaders" class="view">
-    <div class="leaders-title">🏆 Топ 10 игроков</div>
-    <ul id="topList"><li style="justify-content:center;">Загрузка...</li></ul>
-  </div>
-
-  <!-- НИЖНЕЕ МЕНЮ -->
-  <div class="bottom-nav">
-    <button class="nav-btn" id="nav-shop" onclick="switchTab('shop')">
-      <span class="icon">🛒</span> Магазин
-    </button>
-    <button class="nav-btn active hidden" id="nav-tap" onclick="switchTab('tap')">
-      <span class="icon">👆</span> Тап
-    </button>
-    <button class="nav-btn" id="nav-leaders" onclick="switchTab('leaders')">
-      <span class="icon">🏆</span> Лидеры
-    </button>
-  </div>
-
-  <!-- МОДАЛКА АДМИНА -->
-  <div id="adminModal" class="modal">
-    <div class="modal-content">
-      <h2>Панель Админа</h2>
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="@username или Имя">
-        <button onclick="searchUser()">Найти</button>
-      </div>
-      <div id="searchResult">
-        <h3 id="resName" style="margin-bottom:10px;"></h3>
-        <p>Очки: <b id="resScore" style="color:#FFE14D; font-size: 24px;"></b></p>
-        <p>В сети: <span id="resTime" style="color:#8a8a8a;"></span></p>
-      </div>
-      <div class="close-btn" onclick="closeModal('adminModal')">Закрыть</div>
+  <div class="stage" id="stage">
+    <div class="glow"></div>
+    <div class="target" id="target">
+     <!-- ВАЖНО: Убедись, что картинка называется именно так и лежит на GitHub -->
+     <img src="Vlad.png.jpg" alt="Влад">
     </div>
   </div>
+
+  <div class="hint">Прогресс сохраняется автоматически</div>
 
 <script>
-// ==========================================
-// ВСТАВЬ СВОИ КЛЮЧИ SUPABASE ЗДЕСЬ
-// ==========================================
-const SUPABASE_URL = 'ТВОЙ_URL'; 
-const SUPABASE_KEY = 'ТВОЙ_KEY'; 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ==========================================
-// TELEGRAM И ИНИЦИАЛИЗАЦИЯ
-// ==========================================
 const tg = window.Telegram?.WebApp;
-let user = null;
-const MY_ADMIN_ID = 7491680635; // Твой ID
-
 if (tg) {
-  tg.ready(); tg.expand();
-  tg.setHeaderColor?.('#11152b'); tg.setBackgroundColor?.('#11152b');
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor?.('#11152b');
+  tg.setBackgroundColor?.('#11152b');
   try { tg.disableVerticalSwipes?.(); } catch(e){}
-  user = tg.initDataUnsafe?.user;
 }
-if (user && user.id === MY_ADMIN_ID) document.getElementById('adminBtn').style.display = 'block';
 
 const $ = id => document.getElementById(id);
-const els = { score:$('score'), stage:$('stage'), mainImage:$('mainImage'), glow:$('glow') };
+const els = { 
+  score:$('score'), 
+  stage:$('stage'), 
+  target:$('target')
+};
 
-// Локальное состояние игры
-let state = { score: 0, perClick: 1, skin: 'default' };
-let saveTimer = null;
+// Используем старое доброе локальное сохранение
+const STORAGE_KEY = 'tap-score-v3'; 
+let state = { score: 0, perClick: 1 };
 
-const dbId = user ? user.id.toString() : 'test_user';
-const dbUsername = user && user.username ? user.username : '';
-const dbFirstName = user ? (user.first_name || 'Игрок') : 'Тестер';
-
-// ==========================================
-// ЗАГРУЗКА И СОХРАНЕНИЕ (Двойная система)
-// ==========================================
-async function initGame() {
-  // 1. Сначала грузим локальный кэш (чтобы не терять очки, если интернет лагает)
-  const localData = localStorage.getItem('tap_save_' + dbId);
-  if (localData) {
-    try { state = { ...state, ...JSON.parse(localData) }; } catch(e){}
-  }
-  applySkin(state.skin);
-  render();
-
-  // 2. Потом синхронизируемся с базой данных
-  try {
-    const { data, error } = await supabaseClient.from('players').select('*').eq('id', dbId).single();
-    if (data) {
-      // Если в базе очков больше, берем их
-      if (data.score > state.score) state.score = data.score;
-      
-      render();
-      saveLocal();
-    } else if (!error || error.code === 'PGRST116') {
-      // Создаем нового игрока в базе
-      await supabaseClient.from('players').insert([{ id: dbId, username: dbUsername, first_name: dbFirstName, score: state.score }]);
+function loadScore() {
+  const onLoad = (dataStr) => {
+    if (dataStr) {
+      try {
+        const parsed = JSON.parse(dataStr);
+        state.score = parseInt(parsed.score) || 0;
+        state.perClick = parseInt(parsed.perClick) || 1;
+      } catch(e){}
     }
-  } catch(e) { console.warn('БД недоступна, играем локально'); }
+    render();
+  };
+
+  if (tg?.CloudStorage) {
+    tg.CloudStorage.getItem(STORAGE_KEY, (err, value) => {
+      if (!err && value) {
+        onLoad(value);
+      } else {
+        onLoad(localStorage.getItem(STORAGE_KEY));
+      }
+    });
+  } else {
+    onLoad(localStorage.getItem(STORAGE_KEY));
+  }
 }
 
-function saveLocal() {
-  localStorage.setItem('tap_save_' + dbId, JSON.stringify(state));
-}
-
-function saveToDB() {
-  saveLocal(); // Сохраняем в телефон
+let saveTimer = null;
+function saveScore() {
   clearTimeout(saveTimer);
-  // Отправляем в базу (раз в секунду, чтобы не спамить)
-  saveTimer = setTimeout(async () => {
-    try {
-      await supabaseClient.from('players').upsert({
-        id: dbId, username: dbUsername, first_name: dbFirstName,
-        score: state.score, last_active: new Date().toISOString()
-      });
-    } catch(e) {}
-  }, 1000); 
+  saveTimer = setTimeout(() => {
+    const data = JSON.stringify(state);
+    if (tg?.CloudStorage) tg.CloudStorage.setItem(STORAGE_KEY, data, () => {});
+    try { localStorage.setItem(STORAGE_KEY, data); } catch(e){}
+  }, 400);
 }
 
-// ==========================================
-// НАВИГАЦИЯ
-// ==========================================
-function switchTab(tab) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => {
-    b.classList.remove('active');
-    b.classList.remove('hidden');
-  });
-
-  $(`view-${tab}`).classList.add('active');
-  const activeBtn = $(`nav-${tab}`);
-  activeBtn.classList.add('active');
-  
-  if (tab === 'shop') activeBtn.classList.add('hidden'); 
-  else if (tab === 'tap') activeBtn.classList.add('hidden');
-
-  if (tab === 'leaders') loadLeaders();
-  if (tab === 'shop') loadShop();
-}
-
-// ==========================================
-// ИГРА
-// ==========================================
 const fmt = n => n.toLocaleString('ru-RU');
 function render(bump = false) {
   els.score.textContent = fmt(state.score);
@@ -314,181 +158,94 @@ function render(bump = false) {
 
 let audioCtx = null;
 function initAudio() {
-  if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e){}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 }
 function playSound() {
   if (!audioCtx) return;
   try {
     const t = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = 'triangle'; osc.frequency.setValueAtTime(680, t);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(680, t);
     osc.frequency.exponentialRampToValueAtTime(1200, t + 0.06);
-    gain.gain.setValueAtTime(0.08, t); gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.13);
+    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.13);
   } catch(e){}
 }
 
 const COLORS = ['#FFE14D','#FFD400','#00e5ff','#7cffb2','#ff6b9d'];
+
 function spawnParticles(x, y) {
   for (let i = 0; i < 10; i++) {
-    const p = document.createElement('div'); p.className = 'particle';
-    const a = Math.random() * Math.PI * 2; const d = 50 + Math.random() * 80; const s = 6 + Math.random() * 10;
-    p.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;background:${COLORS[(Math.random()*COLORS.length)|0]};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;`;
-    p.addEventListener('animationend', () => p.remove()); els.stage.appendChild(p);
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const a = Math.random() * Math.PI * 2;
+    const d = 50 + Math.random() * 80;
+    const s = 6 + Math.random() * 10;
+    p.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;` +
+      `background:${COLORS[(Math.random()*COLORS.length)|0]};` +
+      `--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;`;
+    p.addEventListener('animationend', () => p.remove());
+    els.stage.appendChild(p);
   }
 }
+
 function spawnFloater(x, y) {
-  const f = document.createElement('div'); f.className = 'floater';
-  f.textContent = '+' + state.perClick; f.style.left = x + 'px'; f.style.top  = y + 'px';
-  f.addEventListener('animationend', () => f.remove()); els.stage.appendChild(f);
+  const f = document.createElement('div');
+  f.className = 'floater';
+  f.textContent = '+' + state.perClick;
+  f.style.left = x + 'px';
+  f.style.top  = y + 'px';
+  f.addEventListener('animationend', () => f.remove());
+  els.stage.appendChild(f);
 }
 
 function doClick(x, y) {
   state.score += state.perClick;
-  render(true); spawnParticles(x, y); spawnFloater(x, y); playSound();
+  render(true);
+  spawnParticles(x, y);
+  spawnFloater(x, y);
+  playSound();
   tg?.HapticFeedback?.impactOccurred?.('light');
-  saveToDB(); 
+  els.target.classList.remove('pop');
+  void els.target.offsetWidth;
+  els.target.classList.add('pop');
+  saveScore();
 }
 
-// Обработка тапов
-els.stage.addEventListener('pointerdown', e => { 
-  e.preventDefault(); initAudio(); 
-  const r = els.stage.getBoundingClientRect(); 
-  doClick(e.clientX - r.left, e.clientY - r.top); 
+// Обработка для телефонов (тапы)
+els.target.addEventListener('pointerdown', e => {
+  e.preventDefault(); 
+  initAudio();        
+  
+  const r = els.stage.getBoundingClientRect();
+  doClick(e.clientX - r.left, e.clientY - r.top);
 }, { passive: false });
 
-els.stage.addEventListener('touchstart', e => { 
-  e.preventDefault(); initAudio(); 
-  if (e.touches.length > 0) { 
-    const t = e.touches[0]; 
-    const r = els.stage.getBoundingClientRect(); 
-    doClick(t.clientX - r.left, t.clientY - r.top); 
-  } 
+// Страховка для старых телефонов
+els.target.addEventListener('touchstart', e => {
+  e.preventDefault();
+  initAudio();
+  if (e.touches && e.touches.length > 0) {
+    const touch = e.touches[0];
+    const r = els.stage.getBoundingClientRect();
+    doClick(touch.clientX - r.left, touch.clientY - r.top);
+  }
 }, { passive: false });
 
-// ==========================================
-// МАГАЗИН
-// ==========================================
-const SHOP_ITEMS = [
-  { id: 'skill_2x', name: 'Навык: x2 за клик', desc: 'Увеличивает получаемые очки в 2 раза', price: 100, type: 'perClick', value: 2 },
-  { id: 'skill_5x', name: 'Навык: x5 за клик', desc: 'Увеличивает получаемые очки в 5 раз', price: 500, type: 'perClick', value: 5 },
-  { id: 'skin_gold', name: 'Скин: Золотой', desc: 'Делает картинку золотой', price: 1000, type: 'skin', value: 'gold' }
-];
+loadScore();
 
-function loadShop() {
-  const grid = $('shopGrid');
-  grid.innerHTML = '';
-
-  SHOP_ITEMS.forEach(item => {
-    let isBought = false;
-    if (item.type === 'perClick' && state.perClick >= item.value) isBought = true;
-    if (item.type === 'skin' && state.skin === item.value) isBought = true;
-
-    const div = document.createElement('div');
-    div.className = 'shop-item';
-    div.innerHTML = `
-      <div class="shop-item-info">
-        <h3>${item.name}</h3>
-        <p>${item.desc}</p>
-      </div>
-      <button class="buy-btn ${isBought ? 'bought' : ''}" 
-              onclick="buyItem('${item.id}')" 
-              ${isBought || state.score < item.price ? 'disabled' : ''}>
-        ${isBought ? 'Куплено' : item.price + ' очков'}
-      </button>
-    `;
-    grid.appendChild(div);
-  });
-}
-
-function buyItem(id) {
-  const item = SHOP_ITEMS.find(i => i.id === id);
-  if (!item || state.score < item.price) return;
-
-  state.score -= item.price;
-  
-  if (item.type === 'perClick') state.perClick = item.value;
-  if (item.type === 'skin') { state.skin = item.value; applySkin(item.value); }
-
-  render(); saveToDB(); loadShop(); 
-  tg?.HapticFeedback?.notificationOccurred?.('success');
-}
-
-function applySkin(skin) {
-  if (skin === 'gold') {
-    els.mainImage.style.filter = 'sepia(1) saturate(5) hue-rotate(5deg) brightness(1.2)';
-    els.stage.style.filter = 'drop-shadow(0 0 40px rgba(255, 225, 77, 0.9))';
-  } else {
-    els.mainImage.style.filter = 'none';
-    els.stage.style.filter = 'drop-shadow(0 12px 40px rgba(255,225,77,.4))';
-  }
-}
-
-// ==========================================
-// ЛИДЕРЫ
-// ==========================================
-async function loadLeaders() {
-  const list = $('topList');
-  list.innerHTML = '<li style="justify-content:center;">Загрузка...</li>';
-  
-  try {
-    const { data, error } = await supabaseClient.from('players').select('*').order('score', { ascending: false }).limit(10);
-    if (error) throw error;
-    if (data.length === 0) { list.innerHTML = '<li style="justify-content:center;">Пока никто не играл</li>'; return; }
-
-    list.innerHTML = '';
-    data.forEach((player, index) => {
-      const li = document.createElement('li');
-      let rankText = index + 1;
-      if (index === 0) rankText = '🥇'; if (index === 1) rankText = '🥈'; if (index === 2) rankText = '🥉';
-      const displayName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
-      li.innerHTML = `<span class="rank">${rankText}</span><span class="player-name">${displayName}</span><span class="player-score">${fmt(player.score)}</span>`;
-      list.appendChild(li);
-    });
-  } catch(e) {
-    list.innerHTML = '<li style="justify-content:center; color:#ff6b9d;">Ошибка загрузки</li>';
-  }
-}
-
-// ==========================================
-// АДМИНКА
-// ==========================================
-function openModal(id) { $(id).style.display = 'flex'; }
-function closeModal(id) { $(id).style.display = 'none'; }
-
-async function searchUser() {
-  const query = $('searchInput').value.trim().replace('@', '').toLowerCase();
-  if (!query) return;
-
-  $('searchResult').style.display = 'block';
-  $('resName').textContent = 'Ищем...'; $('resScore').textContent = ''; $('resTime').textContent = '';
-
-  try {
-    const { data, error } = await supabaseClient.from('players').select('*').or(`username.ilike.%${query}%,first_name.ilike.%${query}%`);
-    if (error) throw error;
-
-    if (data && data.length > 0) {
-      const found = data[0];
-      $('resName').textContent = found.username ? `@${found.username} (${found.first_name})` : found.first_name;
-      $('resScore').textContent = fmt(found.score);
-      if (found.last_active) {
-        const diff = Math.floor((new Date() - new Date(found.last_active)) / 60000);
-        if (diff < 1) $('resTime').textContent = 'Только что';
-        else if (diff < 60) $('resTime').textContent = `${diff} мин. назад`;
-        else if (diff < 1440) $('resTime').textContent = `${Math.floor(diff/60)} ч. назад`;
-        else $('resTime').textContent = new Date(found.last_active).toLocaleDateString('ru-RU');
-      } else $('resTime').textContent = 'Неизвестно';
-    } else {
-      $('resName').textContent = 'Игрок не найден';
-    }
-  } catch(e) {
-    $('resName').textContent = 'Ошибка БД';
-  }
-}
-
-// Запуск
-initGame();
+window.addEventListener('beforeunload', saveScore);
 </script>
 </body>
 </html>
