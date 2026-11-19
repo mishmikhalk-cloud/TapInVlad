@@ -20,7 +20,7 @@
   .view {
     display: none; flex-direction: column; align-items: center;
     justify-content: center; flex: 1; padding: 20px;
-    padding-bottom: 80px; /* Место для нижнего меню */
+    padding-bottom: 90px; 
   }
   .view.active { display: flex; }
 
@@ -28,26 +28,34 @@
   .score{
     font-size:48px;font-weight:900;color:#FFE14D;
     text-shadow:0 0 30px rgba(255,225,77,.6);
-    line-height:1;transition:transform .1s;text-align:center;margin-top: 20px;
+    line-height:1;transition:transform .1s;text-align:center;margin-top: 10px;
   }
   .score.bump{transform:scale(1.15);}
   .label{font-size:12px;letter-spacing:.2em;text-transform:uppercase;opacity:.5;margin-top:6px;text-align:center;}
-  .stage{position:relative;display:flex;justify-content:center;margin-top: 20px;}
-  .target{
-    width:min(55vw,220px);cursor:pointer;
-    filter:drop-shadow(0 12px 40px rgba(255,225,77,.4));
-    transition:filter .2s, transform .2s;will-change:transform;
-    touch-action: manipulation; -webkit-user-select: none; user-select: none;
+  
+  /* Контейнер для картинки */
+  .stage{
+    position:relative; display:flex; justify-content:center; align-items:center;
+    margin-top: 20px; width: min(60vw, 250px); height: min(60vw, 250px);
+    cursor: pointer; touch-action: manipulation;
   }
-  .target img{display:block;width:100%;height:auto;pointer-events:none;border-radius:20px;transition: filter 0.3s;}
-  .target.pop{animation:pop .12s ease;}
-  @keyframes pop{50%{transform:scale(.93);}}
+  
   .glow{
     position:absolute;inset:-15%;z-index:-1;pointer-events:none;
     background:radial-gradient(circle,rgba(255,225,77,.3),transparent 65%);
-    animation:pulse 2.4s ease-in-out infinite;
+    animation:pulse 2.4s ease-in-out infinite; border-radius: 50%;
   }
   @keyframes pulse{50%{transform:scale(1.12);opacity:.6;}}
+  
+  .target-img {
+    display: block; width: 100%; height: 100%; object-fit: cover;
+    border-radius: 20px; pointer-events: none; /* Клик проходит сквозь картинку */
+    transition: filter 0.3s, transform 0.1s;
+  }
+  
+  .stage:active .target-img { transform: scale(0.92); }
+
+  /* Частицы и текст */
   .particle{position:absolute;border-radius:50%;pointer-events:none;animation:burst .7s ease-out forwards;}
   @keyframes burst{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0;}}
   .floater{
@@ -59,8 +67,8 @@
   .hint{font-size:12px;opacity:.35;text-align:center;margin-top: 20px;}
 
   /* --- МАГАЗИН --- */
-  .shop-title { font-size: 24px; font-weight: bold; color: #FFE14D; margin-bottom: 20px; width: 100%; text-align: left;}
-  .shop-grid { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; overflow-y: auto; }
+  .shop-title, .leaders-title { font-size: 24px; font-weight: bold; color: #FFE14D; margin-bottom: 20px; width: 100%; text-align: left;}
+  .shop-grid { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; overflow-y: auto; padding-bottom: 20px;}
   .shop-item {
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
     padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center;
@@ -69,13 +77,12 @@
   .shop-item-info p { margin: 0; font-size: 12px; color: #aaa; }
   .buy-btn {
     background: #FFE14D; color: #000; border: none; padding: 8px 15px;
-    border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px;
+    border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; white-space: nowrap;
   }
   .buy-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
   .buy-btn.bought { background: #4ade80; color: #000; }
 
   /* --- ЛИДЕРЫ --- */
-  .leaders-title { font-size: 24px; font-weight: bold; color: #FFE14D; margin-bottom: 20px; width: 100%; text-align: left;}
   #topList { list-style: none; padding: 0; margin: 0; width: 100%; max-width: 400px; overflow-y: auto;}
   #topList li {
     display: flex; justify-content: space-between; align-items: center;
@@ -104,8 +111,6 @@
   }
   .nav-btn.active { color: #FFE14D; }
   .nav-btn .icon { font-size: 24px; }
-  
-  /* Скрываем кнопку, если мы на этой вкладке (по твоей просьбе) */
   .nav-btn.hidden { visibility: hidden; }
 
   /* --- АДМИНКА --- */
@@ -134,37 +139,32 @@
 </head>
 <body>
 
-  <!-- Кнопка админа -->
   <button id="adminBtn" onclick="openModal('adminModal')">⚙️ Админ</button>
 
   <!-- ЭКРАН 1: ТАПАЛКА -->
   <div id="view-tap" class="view active">
     <div class="score" id="score">0</div>
     <div class="label">Тапни по картинке</div>
+    
+    <!-- Контейнер для кликов -->
     <div class="stage" id="stage">
-      <div class="glow"></div>
-      <div class="target" id="target">
-       <!-- Твоя картинка. Сюда же применяются скины -->
-       <img id="mainImage" src="Vlad.png.jpg" alt="Влад">
-      </div>
+      <div class="glow" id="glow"></div>
+      <img class="target-img" id="mainImage" src="Vlad.png.jpg" alt="Влад">
     </div>
+    
     <div class="hint">Прогресс сохраняется автоматически</div>
   </div>
 
   <!-- ЭКРАН 2: МАГАЗИН -->
   <div id="view-shop" class="view">
     <div class="shop-title">🛒 Магазин</div>
-    <div class="shop-grid" id="shopGrid">
-      <!-- Товары будут добавлены через JS -->
-    </div>
+    <div class="shop-grid" id="shopGrid"></div>
   </div>
 
   <!-- ЭКРАН 3: ЛИДЕРЫ -->
   <div id="view-leaders" class="view">
     <div class="leaders-title">🏆 Топ 10 игроков</div>
-    <ul id="topList">
-      <li style="justify-content:center;">Загрузка...</li>
-    </ul>
+    <ul id="topList"><li style="justify-content:center;">Загрузка...</li></ul>
   </div>
 
   <!-- НИЖНЕЕ МЕНЮ -->
@@ -199,11 +199,10 @@
 
 <script>
 // ==========================================
-// НАСТРОЙКИ БАЗЫ ДАННЫХ
+// ВСТАВЬ СВОИ КЛЮЧИ SUPABASE ЗДЕСЬ
 // ==========================================
-const SUPABASE_URL = 'ВСТАВЬ_URL'; // <-- ВСТАВЬ СЮДА
-const SUPABASE_KEY = 'ВСТАВЬ_КЛЮЧ'; // <-- ВСТАВЬ СЮДА
-
+const SUPABASE_URL = 'ТВОЙ_URL'; 
+const SUPABASE_KEY = 'ТВОЙ_KEY'; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
@@ -214,18 +213,17 @@ let user = null;
 const MY_ADMIN_ID = 7491680635;
 
 if (tg) {
-  tg.ready();
-  tg.expand();
-  tg.setHeaderColor?.('#11152b');
-  tg.setBackgroundColor?.('#11152b');
+  tg.ready(); tg.expand();
+  tg.setHeaderColor?.('#11152b'); tg.setBackgroundColor?.('#11152b');
   try { tg.disableVerticalSwipes?.(); } catch(e){}
   user = tg.initDataUnsafe?.user;
 }
 if (user && user.id === MY_ADMIN_ID) document.getElementById('adminBtn').style.display = 'block';
 
 const $ = id => document.getElementById(id);
-const els = { score:$('score'), stage:$('stage'), target:$('target'), mainImage:$('mainImage') };
+const els = { score:$('score'), stage:$('stage'), mainImage:$('mainImage'), glow:$('glow') };
 
+// Локальное состояние игры
 let state = { score: 0, perClick: 1, skin: 'default' };
 let saveTimer = null;
 
@@ -234,56 +232,69 @@ const dbUsername = user && user.username ? user.username : '';
 const dbFirstName = user ? (user.first_name || 'Игрок') : 'Тестер';
 
 // ==========================================
-// СИНХРОНИЗАЦИЯ С БАЗОЙ
+// ЗАГРУЗКА И СОХРАНЕНИЕ (Двойная система)
 // ==========================================
-async function initDB() {
-  const { data, error } = await supabaseClient.from('players').select('*').eq('id', dbId).single();
-  if (data) {
-    state.score = data.score;
-    // Загружаем сохраненный скин (если ты добавишь колонку skin в БД)
-    render();
-  } else if (!error || error.code === 'PGRST116') {
-    await supabaseClient.from('players').insert([{ id: dbId, username: dbUsername, first_name: dbFirstName, score: 0 }]);
+async function initGame() {
+  // 1. Сначала грузим локальный кэш (чтобы не терять очки, если интернет лагает)
+  const localData = localStorage.getItem('tap_save_' + dbId);
+  if (localData) {
+    try { state = { ...state, ...JSON.parse(localData) }; } catch(e){}
   }
+  applySkin(state.skin);
+  render();
+
+  // 2. Потом синхронизируемся с базой данных
+  try {
+    const { data, error } = await supabaseClient.from('players').select('*').eq('id', dbId).single();
+    if (data) {
+      // Если в базе очков больше, берем их
+      if (data.score > state.score) state.score = data.score;
+      
+      // Если в базе есть данные о скине/навыке — берем их (пока их там нет, но на будущее)
+      render();
+      saveLocal();
+    } else if (!error || error.code === 'PGRST116') {
+      // Создаем нового игрока в базе
+      await supabaseClient.from('players').insert([{ id: dbId, username: dbUsername, first_name: dbFirstName, score: state.score }]);
+    }
+  } catch(e) { console.warn('БД недоступна, играем локально'); }
+}
+
+function saveLocal() {
+  localStorage.setItem('tap_save_' + dbId, JSON.stringify(state));
 }
 
 function saveToDB() {
+  saveLocal(); // Сохраняем в телефон
   clearTimeout(saveTimer);
+  // Отправляем в базу (раз в секунду, чтобы не спамить)
   saveTimer = setTimeout(async () => {
-    await supabaseClient.from('players').upsert({
-      id: dbId, username: dbUsername, first_name: dbFirstName,
-      score: state.score, last_active: new Date().toISOString()
-    });
+    try {
+      await supabaseClient.from('players').upsert({
+        id: dbId, username: dbUsername, first_name: dbFirstName,
+        score: state.score, last_active: new Date().toISOString()
+      });
+    } catch(e) {}
   }, 1000); 
 }
 
 // ==========================================
-// НАВИГАЦИЯ (ВКЛАДКИ)
+// НАВИГАЦИЯ
 // ==========================================
 function switchTab(tab) {
-  // Скрываем все экраны
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.remove('active');
-    b.classList.remove('hidden'); // Показываем все кнопки
+    b.classList.remove('hidden');
   });
 
-  // Включаем нужный экран
   $(`view-${tab}`).classList.add('active');
-  
-  // Делаем кнопку активной
   const activeBtn = $(`nav-${tab}`);
   activeBtn.classList.add('active');
   
-  // Твое условие: если мы в магазине, скрываем кнопку магазина
-  if (tab === 'shop') {
-    activeBtn.classList.add('hidden'); // Скрываем кнопку магазина
-  } else if (tab === 'tap') {
-    // Если мы на главной, кнопка "Тап" не нужна, скрываем её
-    activeBtn.classList.add('hidden');
-  }
+  if (tab === 'shop') activeBtn.classList.add('hidden'); 
+  else if (tab === 'tap') activeBtn.classList.add('hidden');
 
-  // Запускаем загрузку данных при переходе
   if (tab === 'leaders') loadLeaders();
   if (tab === 'shop') loadShop();
 }
@@ -337,42 +348,32 @@ function doClick(x, y) {
   state.score += state.perClick;
   render(true); spawnParticles(x, y); spawnFloater(x, y); playSound();
   tg?.HapticFeedback?.impactOccurred?.('light');
-  els.target.classList.remove('pop'); void els.target.offsetWidth; els.target.classList.add('pop');
   saveToDB(); 
 }
 
-els.target.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); const r = els.stage.getBoundingClientRect(); doClick(e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-els.target.addEventListener('touchstart', e => { e.preventDefault(); initAudio(); if (e.touches.length > 0) { const t = e.touches[0]; const r = els.stage.getBoundingClientRect(); doClick(t.clientX - r.left, t.clientY - r.top); } }, { passive: false });
+// Обработка тапов
+els.stage.addEventListener('pointerdown', e => { 
+  e.preventDefault(); initAudio(); 
+  const r = els.stage.getBoundingClientRect(); 
+  doClick(e.clientX - r.left, e.clientY - r.top); 
+}, { passive: false });
+
+els.stage.addEventListener('touchstart', e => { 
+  e.preventDefault(); initAudio(); 
+  if (e.touches.length > 0) { 
+    const t = e.touches[0]; 
+    const r = els.stage.getBoundingClientRect(); 
+    doClick(t.clientX - r.left, t.clientY - r.top); 
+  } 
+}, { passive: false });
 
 // ==========================================
-// ЛОГИКА ЛИДЕРОВ
-// ==========================================
-async function loadLeaders() {
-  const list = $('topList');
-  list.innerHTML = '<li style="justify-content:center;">Загрузка...</li>';
-  
-  const { data, error } = await supabaseClient.from('players').select('*').order('score', { ascending: false }).limit(10);
-  
-  if (error) { list.innerHTML = '<li style="justify-content:center; color:#ff6b9d;">Ошибка загрузки</li>'; return; }
-  if (data.length === 0) { list.innerHTML = '<li style="justify-content:center;">Пока никто не играл</li>'; return; }
-
-  list.innerHTML = '';
-  data.forEach((player, index) => {
-    const li = document.createElement('li');
-    let rankText = index + 1;
-    if (index === 0) rankText = '🥇'; if (index === 1) rankText = '🥈'; if (index === 2) rankText = '🥉';
-    const displayName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
-    li.innerHTML = `<span class="rank">${rankText}</span><span class="player-name">${displayName}</span><span class="player-score">${fmt(player.score)}</span>`;
-    list.appendChild(li);
-  });
-}
-
-// ==========================================
-// ЛОГИКА МАГАЗИНА (ЗАГОТОВКА)
+// МАГАЗИН
 // ==========================================
 const SHOP_ITEMS = [
   { id: 'skill_2x', name: 'Навык: x2 за клик', desc: 'Увеличивает получаемые очки в 2 раза', price: 100, type: 'perClick', value: 2 },
-  { id: 'skin_gold', name: 'Скин: Золотой фон', desc: 'Меняет фон картинки на золотой', price: 500, type: 'skin', value: 'gold' }
+  { id: 'skill_5x', name: 'Навык: x5 за клик', desc: 'Увеличивает получаемые очки в 5 раз', price: 500, type: 'perClick', value: 5 },
+  { id: 'skin_gold', name: 'Скин: Золотой', desc: 'Делает картинку золотой', price: 1000, type: 'skin', value: 'gold' }
 ];
 
 function loadShop() {
@@ -380,7 +381,6 @@ function loadShop() {
   grid.innerHTML = '';
 
   SHOP_ITEMS.forEach(item => {
-    // Проверяем, куплено ли уже (для скина проверяем state.skin, для навыка - state.perClick >= value)
     let isBought = false;
     if (item.type === 'perClick' && state.perClick >= item.value) isBought = true;
     if (item.type === 'skin' && state.skin === item.value) isBought = true;
@@ -406,34 +406,53 @@ function buyItem(id) {
   const item = SHOP_ITEMS.find(i => i.id === id);
   if (!item || state.score < item.price) return;
 
-  // Списываем очки
   state.score -= item.price;
   
-  // Применяем эффект
-  if (item.type === 'perClick') {
-    state.perClick = item.value;
-  } else if (item.type === 'skin') {
-    state.skin = item.value;
-    applySkin(item.value);
-  }
+  if (item.type === 'perClick') state.perClick = item.value;
+  if (item.type === 'skin') { state.skin = item.value; applySkin(item.value); }
 
-  // Обновляем интерфейс и базу
-  render();
-  saveToDB();
-  loadShop(); // Перерисовываем магазин, чтобы кнопка стала "Куплено"
-  
+  render(); saveToDB(); loadShop(); 
   tg?.HapticFeedback?.notificationOccurred?.('success');
 }
 
 function applySkin(skin) {
   if (skin === 'gold') {
     els.mainImage.style.filter = 'sepia(1) saturate(5) hue-rotate(5deg) brightness(1.2)';
-    els.target.style.filter = 'drop-shadow(0 0 40px rgba(255, 225, 77, 0.9))';
+    els.stage.style.filter = 'drop-shadow(0 0 40px rgba(255, 225, 77, 0.9))';
+  } else {
+    els.mainImage.style.filter = 'none';
+    els.stage.style.filter = 'drop-shadow(0 12px 40px rgba(255,225,77,.4))';
   }
 }
 
 // ==========================================
-// АДМИН ПАНЕЛЬ
+// ЛИДЕРЫ
+// ==========================================
+async function loadLeaders() {
+  const list = $('topList');
+  list.innerHTML = '<li style="justify-content:center;">Загрузка...</li>';
+  
+  try {
+    const { data, error } = await supabaseClient.from('players').select('*').order('score', { ascending: false }).limit(10);
+    if (error) throw error;
+    if (data.length === 0) { list.innerHTML = '<li style="justify-content:center;">Пока никто не играл</li>'; return; }
+
+    list.innerHTML = '';
+    data.forEach((player, index) => {
+      const li = document.createElement('li');
+      let rankText = index + 1;
+      if (index === 0) rankText = '🥇'; if (index === 1) rankText = '🥈'; if (index === 2) rankText = '🥉';
+      const displayName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
+      li.innerHTML = `<span class="rank">${rankText}</span><span class="player-name">${displayName}</span><span class="player-score">${fmt(player.score)}</span>`;
+      list.appendChild(li);
+    });
+  } catch(e) {
+    list.innerHTML = '<li style="justify-content:center; color:#ff6b9d;">Ошибка загрузки</li>';
+  }
+}
+
+// ==========================================
+// АДМИНКА
 // ==========================================
 function openModal(id) { $(id).style.display = 'flex'; }
 function closeModal(id) { $(id).style.display = 'none'; }
@@ -445,27 +464,31 @@ async function searchUser() {
   $('searchResult').style.display = 'block';
   $('resName').textContent = 'Ищем...'; $('resScore').textContent = ''; $('resTime').textContent = '';
 
-  const { data, error } = await supabaseClient.from('players').select('*').or(`username.ilike.%${query}%,first_name.ilike.%${query}%`);
+  try {
+    const { data, error } = await supabaseClient.from('players').select('*').or(`username.ilike.%${query}%,first_name.ilike.%${query}%`);
+    if (error) throw error;
 
-  if (error) { $('resName').textContent = 'Ошибка БД'; return; }
-
-  if (data && data.length > 0) {
-    const found = data[0];
-    $('resName').textContent = found.username ? `@${found.username} (${found.first_name})` : found.first_name;
-    $('resScore').textContent = fmt(found.score);
-    if (found.last_active) {
-      const diff = Math.floor((new Date() - new Date(found.last_active)) / 60000);
-      if (diff < 1) $('resTime').textContent = 'Только что';
-      else if (diff < 60) $('resTime').textContent = `${diff} мин. назад`;
-      else if (diff < 1440) $('resTime').textContent = `${Math.floor(diff/60)} ч. назад`;
-      else $('resTime').textContent = new Date(found.last_active).toLocaleDateString('ru-RU');
-    } else $('resTime').textContent = 'Неизвестно';
-  } else {
-    $('resName').textContent = 'Игрок не найден';
+    if (data && data.length > 0) {
+      const found = data[0];
+      $('resName').textContent = found.username ? `@${found.username} (${found.first_name})` : found.first_name;
+      $('resScore').textContent = fmt(found.score);
+      if (found.last_active) {
+        const diff = Math.floor((new Date() - new Date(found.last_active)) / 60000);
+        if (diff < 1) $('resTime').textContent = 'Только что';
+        else if (diff < 60) $('resTime').textContent = `${diff} мин. назад`;
+        else if (diff < 1440) $('resTime').textContent = `${Math.floor(diff/60)} ч. назад`;
+        else $('resTime').textContent = new Date(found.last_active).toLocaleDateString('ru-RU');
+      } else $('resTime').textContent = 'Неизвестно';
+    } else {
+      $('resName').textContent = 'Игрок не найден';
+    }
+  } catch(e) {
+    $('resName').textContent = 'Ошибка БД';
   }
 }
 
-initDB();
+// Запуск
+initGame();
 </script>
 </body>
 </html>
