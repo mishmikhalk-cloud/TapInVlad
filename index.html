@@ -153,7 +153,7 @@
   <!-- Магазин -->
   <div id="shopModal" class="modal">
     <div class="modal-content">
-      <h2>Выбери Владика</h2>
+      <h2>Магозин скинов</h2>
       <div class="vlad-list" id="vladList"></div>
       <div class="close-btn" onclick="closeShop()">Закрыть</div>
     </div>
@@ -176,17 +176,17 @@ const STORAGE_KEY = 'tap-score-v5';
 let state = { 
   score: 0, 
   perClick: 1, 
-  unlocked: ['pizza'], 
-  current: 'pizza' 
+  unlocked: ['1'], // По умолчанию куплен первый владик (id: '1')
+  current: '1' 
 };
 
 // ==========================================
-// СПИСОК ВЛАДИКОВ (Меняй тут картинки)
+// СПИСОК ВЛАДИКОВ (Здесь всё исправлено)
 // ==========================================
 const VLADS = [
   { 
     id: '1', 
-    name: 'Вдад дрипчик', 
+    name: 'Влад дрипчик', 
     price: 0, 
     src: 'VladGopnik.jpg' 
   },
@@ -194,7 +194,13 @@ const VLADS = [
     id: '2', 
     name: 'Арсэн Дрип', 
     price: 25000, 
-    src: 'Арсэн.jpg' 
+    src: 'arsen.jpg' 
+  },
+  {
+    id: '3',
+    name: 'Веринский прайм',
+    price: 40000,
+    src: 'verinskiPrime.jpg' // ВАЖНО: картинку на GitHub назови verinsky.jpg (английскими буквами!)
   }
 ];
 // ==========================================
