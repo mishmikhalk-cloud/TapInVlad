@@ -42,10 +42,11 @@
     .target:hover{filter:drop-shadow(0 12px 55px rgba(255,225,77,.7));}
   }
   
-  .target img,.target svg{
-    display:block;width:100%;height:auto;
-    pointer-events:none; 
-    border-radius:20px;
+  .target img{
+    display:block;width:100%;height:100%;object-fit:cover;
+    aspect-ratio: 1 / 1; 
+    pointer-events:none; border-radius:20px;
+    transition: opacity 0.2s;
   }
   .target.pop{animation:pop .12s ease;}
   @keyframes pop{50%{transform:scale(.93);}}
@@ -70,25 +71,93 @@
     animation:floatUp .9s ease-out forwards;
   }
   @keyframes floatUp{to{transform:translate(-50%,-160%) scale(1.4);opacity:0;}}
+  
+  /* Блок с подсказкой и кнопкой магазина */
+  .bottom-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+  }
   .hint{font-size:12px;opacity:.35;text-align:center;}
+
+  #shopBtn {
+    background: rgba(255, 225, 77, 0.15); 
+    border: 1px solid #FFE14D;
+    color: #FFE14D; 
+    padding: 10px 25px; 
+    border-radius: 12px;
+    font-weight: bold; 
+    font-size: 15px;
+    cursor: pointer; 
+    transition: 0.2s;
+  }
+  #shopBtn:active { transform: scale(0.95); }
+
+  /* --- МОДАЛЬНОЕ ОКНО МАГАЗИНА --- */
+  .modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 999; padding: 20px;
+    flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);
+  }
+  .modal-content {
+    background: #11152b; border: 1px solid rgba(255, 225, 77, 0.3);
+    padding: 20px; border-radius: 20px; width: 100%; max-width: 350px;
+    max-height: 80vh; display: flex; flex-direction: column;
+  }
+  .modal h2 { color: #FFE14D; margin-bottom: 15px; text-align: center; }
+  .close-btn { margin-top: 15px; text-align: center; color: #ff6b9d; cursor: pointer; font-weight: bold; padding: 10px;}
+  
+  .vlad-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 5px;}
+  .vlad-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .vlad-item img {
+    width: 50px; height: 50px; border-radius: 10px; object-fit: cover;
+  }
+  .vlad-info { flex: 1; margin-left: 10px; }
+  .vlad-info h3 { margin: 0 0 5px 0; font-size: 14px; }
+  .vlad-info p { margin: 0; font-size: 12px; color: #aaa; }
+  .vlad-btn {
+    background: #FFE14D; color: #000; border: none; padding: 8px 12px;
+    border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px;
+  }
+  .vlad-btn.active { background: #4ade80; }
+  .vlad-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
 </style>
 </head>
 <body>
 
+  <!-- Главный экран -->
   <div>
     <div class="score" id="score">0</div>
-    <div class="label">Тапни по гопнику Владу</div>
+    <div class="label">Тапни по картинке</div>
   </div>
 
   <div class="stage" id="stage">
     <div class="glow"></div>
     <div class="target" id="target">
-     <!-- ВОТ ЗДЕСЬ ИЗМЕНЕНО ИМЯ КАРТИНКИ -->
-     <img src="VladGopnik.jpg" alt="Влад">
+     <img id="mainImage" src="VladGopnik.jpg" alt="Влад">
     </div>
   </div>
 
-  <div class="hint">Прогресс сохраняется автоматически</div>
+  <!-- Блок снизу: надпись и кнопка магазина -->
+  <div class="bottom-area">
+    <div class="hint">Прогресс сохраняется автоматически</div>
+    <button id="shopBtn" onclick="openShop()">🛒 Магазин</button>
+  </div>
+
+  <!-- Магазин -->
+  <div id="shopModal" class="modal">
+    <div class="modal-content">
+      <h2>Выбери Владика</h2>
+      <div class="vlad-list" id="vladList"></div>
+      <div class="close-btn" onclick="closeShop()">Закрыть</div>
+    </div>
+  </div>
 
 <script>
 const tg = window.Telegram?.WebApp;
@@ -101,14 +170,34 @@ if (tg) {
 }
 
 const $ = id => document.getElementById(id);
-const els = { 
-  score:$('score'), 
-  stage:$('stage'), 
-  target:$('target')
+const els = { score:$('score'), stage:$('stage'), target:$('target'), mainImage:$('mainImage') };
+
+const STORAGE_KEY = 'tap-score-v5'; 
+let state = { 
+  score: 0, 
+  perClick: 1, 
+  unlocked: ['pizza'], 
+  current: 'pizza' 
 };
 
-const STORAGE_KEY = 'tap-score-v3'; 
-let state = { score: 0, perClick: 1 };
+// ==========================================
+// СПИСОК ВЛАДИКОВ (Меняй тут картинки)
+// ==========================================
+const VLADS = [
+  { 
+    id: '1', 
+    name: 'Вдад дрипчик', 
+    price: 0, 
+    src: 'VladGopnik.jpg' 
+  },
+  { 
+    id: '2', 
+    name: 'Арсэн Дрип', 
+    price: 25000, 
+    src: 'Арсэн.jpg' 
+  }
+];
+// ==========================================
 
 function loadScore() {
   const onLoad = (dataStr) => {
@@ -117,18 +206,21 @@ function loadScore() {
         const parsed = JSON.parse(dataStr);
         state.score = parseInt(parsed.score) || 0;
         state.perClick = parseInt(parsed.perClick) || 1;
+        
+        if (parsed.unlocked && Array.isArray(parsed.unlocked)) {
+            state.unlocked = parsed.unlocked;
+        }
+        if (parsed.current) state.current = parsed.current;
       } catch(e){}
     }
+    applyVlad(state.current);
     render();
   };
 
   if (tg?.CloudStorage) {
     tg.CloudStorage.getItem(STORAGE_KEY, (err, value) => {
-      if (!err && value) {
-        onLoad(value);
-      } else {
-        onLoad(localStorage.getItem(STORAGE_KEY));
-      }
+      if (!err && value) onLoad(value);
+      else onLoad(localStorage.getItem(STORAGE_KEY));
     });
   } else {
     onLoad(localStorage.getItem(STORAGE_KEY));
@@ -155,86 +247,123 @@ function render(bump = false) {
   }
 }
 
+// --- МАГАЗИН ---
+function openShop() {
+  $('shopModal').style.display = 'flex';
+  renderShop();
+}
+function closeShop() {
+  $('shopModal').style.display = 'none';
+}
+
+function renderShop() {
+  const list = $('vladList');
+  list.innerHTML = '';
+
+  VLADS.forEach(vlad => {
+    const isBought = state.unlocked.includes(vlad.id);
+    const isActive = state.current === vlad.id;
+    const canBuy = state.score >= vlad.price;
+
+    const div = document.createElement('div');
+    div.className = 'vlad-item';
+    div.innerHTML = `
+      <img src="${vlad.src}">
+      <div class="vlad-info">
+        <h3>${vlad.name}</h3>
+        <p>${isBought ? 'Куплено' : 'Цена: ' + vlad.price}</p>
+      </div>
+      <button class="vlad-btn ${isActive ? 'active' : ''}" 
+              onclick="handleVlad('${vlad.id}')"
+              ${!isBought && !canBuy ? 'disabled' : ''}>
+        ${isActive ? 'Выбран' : (isBought ? 'Выбрать' : 'Купить')}
+      </button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function handleVlad(id) {
+  const vlad = VLADS.find(v => v.id === id);
+  if (!vlad) return;
+
+  const isBought = state.unlocked.includes(id);
+
+  if (isBought) {
+    state.current = id;
+    applyVlad(id);
+  } else {
+    if (state.score >= vlad.price) {
+      state.score -= vlad.price;
+      state.unlocked.push(id);
+      state.current = id;
+      applyVlad(id);
+      render();
+      tg?.HapticFeedback?.notificationOccurred?.('success');
+    } else {
+      tg?.HapticFeedback?.notificationOccurred?.('error');
+      return;
+    }
+  }
+  
+  saveScore();
+  renderShop(); 
+}
+
+function applyVlad(id) {
+  const vlad = VLADS.find(v => v.id === id) || VLADS[0];
+  els.mainImage.src = vlad.src; 
+}
+
+// --- ИГРА ---
 let audioCtx = null;
 function initAudio() {
-  if (!audioCtx) {
-    try {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch(e){}
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 }
 function playSound() {
   if (!audioCtx) return;
   try {
     const t = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(680, t);
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = 'triangle'; osc.frequency.setValueAtTime(680, t);
     osc.frequency.exponentialRampToValueAtTime(1200, t + 0.06);
-    gain.gain.setValueAtTime(0.08, t);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(t); osc.stop(t + 0.13);
+    gain.gain.setValueAtTime(0.08, t); gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.13);
   } catch(e){}
 }
 
 const COLORS = ['#FFE14D','#FFD400','#00e5ff','#7cffb2','#ff6b9d'];
-
 function spawnParticles(x, y) {
   for (let i = 0; i < 10; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const a = Math.random() * Math.PI * 2;
-    const d = 50 + Math.random() * 80;
-    const s = 6 + Math.random() * 10;
-    p.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;` +
-      `background:${COLORS[(Math.random()*COLORS.length)|0]};` +
-      `--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;`;
-    p.addEventListener('animationend', () => p.remove());
-    els.stage.appendChild(p);
+    const p = document.createElement('div'); p.className = 'particle';
+    const a = Math.random() * Math.PI * 2; const d = 50 + Math.random() * 80; const s = 6 + Math.random() * 10;
+    p.style.cssText = `left:${x}px;top:${y}px;width:${s}px;height:${s}px;background:${COLORS[(Math.random()*COLORS.length)|0]};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;`;
+    p.addEventListener('animationend', () => p.remove()); els.stage.appendChild(p);
   }
 }
-
 function spawnFloater(x, y) {
-  const f = document.createElement('div');
-  f.className = 'floater';
-  f.textContent = '+' + state.perClick;
-  f.style.left = x + 'px';
-  f.style.top  = y + 'px';
-  f.addEventListener('animationend', () => f.remove());
-  els.stage.appendChild(f);
+  const f = document.createElement('div'); f.className = 'floater';
+  f.textContent = '+' + state.perClick; f.style.left = x + 'px'; f.style.top  = y + 'px';
+  f.addEventListener('animationend', () => f.remove()); els.stage.appendChild(f);
 }
 
 function doClick(x, y) {
   state.score += state.perClick;
-  render(true);
-  spawnParticles(x, y);
-  spawnFloater(x, y);
-  playSound();
+  render(true); spawnParticles(x, y); spawnFloater(x, y); playSound();
   tg?.HapticFeedback?.impactOccurred?.('light');
-  els.target.classList.remove('pop');
-  void els.target.offsetWidth;
-  els.target.classList.add('pop');
+  els.target.classList.remove('pop'); void els.target.offsetWidth; els.target.classList.add('pop');
   saveScore();
 }
 
-// Обработка для телефонов (тапы)
 els.target.addEventListener('pointerdown', e => {
-  e.preventDefault(); 
-  initAudio();        
-  
+  e.preventDefault(); initAudio();        
   const r = els.stage.getBoundingClientRect();
   doClick(e.clientX - r.left, e.clientY - r.top);
 }, { passive: false });
 
-// Страховка для старых телефонов
 els.target.addEventListener('touchstart', e => {
-  e.preventDefault();
-  initAudio();
+  e.preventDefault(); initAudio();
   if (e.touches && e.touches.length > 0) {
     const touch = e.touches[0];
     const r = els.stage.getBoundingClientRect();
@@ -243,7 +372,6 @@ els.target.addEventListener('touchstart', e => {
 }, { passive: false });
 
 loadScore();
-
 window.addEventListener('beforeunload', saveScore);
 </script>
 </body>
