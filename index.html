@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Тапалка</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Подключаем Supabase (база данных) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;margin:0;overflow:hidden;}
@@ -12,10 +14,29 @@
     font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
     background:radial-gradient(circle at 50% 0%,#2b3a67 0%,#11152b 55%,#070912 100%);
     color:#fff;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:20px;padding:20px;user-select:none;
+    justify-content:center;gap:15px;padding:20px;user-select:none;
     touch-action:manipulation;min-height:100dvh;
   }
   
+  /* Панель профиля */
+  .profile-header {
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; max-width: 300px; background: rgba(255, 255, 255, 0.05);
+    padding: 12px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 5px;
+  }
+  .level-info {
+    display: flex; justify-content: space-between; width: 100%;
+    font-size: 14px; font-weight: bold; color: #FFE14D; margin-bottom: 8px;
+  }
+  .xp-bar-bg {
+    width: 100%; height: 8px; background: #2b3a67; border-radius: 10px; overflow: hidden;
+  }
+  .xp-bar-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #FFE14D, #ff9500);
+    border-radius: 10px; transition: width 0.3s ease;
+  }
+
   .score{
     font-size:48px;font-weight:900;color:#FFE14D;
     text-shadow:0 0 30px rgba(255,225,77,.6);
@@ -32,21 +53,13 @@
     width:min(55vw,220px);cursor:pointer;
     filter:drop-shadow(0 12px 40px rgba(255,225,77,.4));
     transition:filter .2s;will-change:transform;
-    touch-action: manipulation;
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
+    touch-action: manipulation; -webkit-user-select: none; user-select: none;
   }
-  
-  @media (hover: hover) {
-    .target:hover{filter:drop-shadow(0 12px 55px rgba(255,225,77,.7));}
-  }
+  @media (hover: hover) { .target:hover{filter:drop-shadow(0 12px 55px rgba(255,225,77,.7));} }
   
   .target img{
     display:block;width:100%;height:100%;object-fit:cover;
-    aspect-ratio: 1 / 1; 
-    pointer-events:none; border-radius:20px;
-    transition: opacity 0.2s;
+    aspect-ratio: 1 / 1; pointer-events:none; border-radius:20px; transition: opacity 0.2s;
   }
   .target.pop{animation:pop .12s ease;}
   @keyframes pop{50%{transform:scale(.93);}}
@@ -58,44 +71,34 @@
   }
   @keyframes pulse{50%{transform:scale(1.12);opacity:.6;}}
   
-  .particle{
-    position:absolute;border-radius:50%;pointer-events:none;
-    animation:burst .7s ease-out forwards;
-  }
+  .particle{ position:absolute;border-radius:50%;pointer-events:none; animation:burst .7s ease-out forwards; }
   @keyframes burst{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0;}}
   
   .floater{
     position:absolute;pointer-events:none;transform:translate(-50%,-50%);
-    font-weight:900;font-size:24px;color:#fff;
-    text-shadow:0 0 12px #FFE14D,0 0 26px #FFE14D;
+    font-weight:900;font-size:24px;color:#fff; text-shadow:0 0 12px #FFE14D,0 0 26px #FFE14D;
     animation:floatUp .9s ease-out forwards;
   }
   @keyframes floatUp{to{transform:translate(-50%,-160%) scale(1.4);opacity:0;}}
   
-  /* Блок с подсказкой и кнопкой магазина */
+  /* Блок с кнопками снизу */
   .bottom-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-    margin-top: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 5px;
   }
   .hint{font-size:12px;opacity:.35;text-align:center;}
 
-  #shopBtn {
-    background: rgba(255, 225, 77, 0.15); 
-    border: 1px solid #FFE14D;
-    color: #FFE14D; 
-    padding: 10px 25px; 
-    border-radius: 12px;
-    font-weight: bold; 
-    font-size: 15px;
-    cursor: pointer; 
-    transition: 0.2s;
+  .btn-row {
+    display: flex; gap: 10px;
   }
-  #shopBtn:active { transform: scale(0.95); }
 
-  /* --- МОДАЛЬНОЕ ОКНО МАГАЗИНА --- */
+  #shopBtn, #topBtn {
+    background: rgba(255, 225, 77, 0.15); border: 1px solid #FFE14D;
+    color: #FFE14D; padding: 10px 20px; border-radius: 12px;
+    font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s;
+  }
+  #shopBtn:active, #topBtn:active { transform: scale(0.95); }
+
+  /* --- МОДАЛЬНЫЕ ОКНА --- */
   .modal {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.85); z-index: 999; padding: 20px;
@@ -110,31 +113,56 @@
   .close-btn { margin-top: 15px; text-align: center; color: #ff6b9d; cursor: pointer; font-weight: bold; padding: 10px;}
   
   .vlad-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 5px;}
+  .vlad-list::-webkit-scrollbar { width: 6px; }
+  .vlad-list::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+  .vlad-list::-webkit-scrollbar-thumb { background: #FFE14D; border-radius: 10px; }
+  
   .vlad-item {
     display: flex; align-items: center; justify-content: space-between;
     background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.1);
   }
-  .vlad-item img {
-    width: 50px; height: 50px; border-radius: 10px; object-fit: cover;
-  }
+  .vlad-item img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; }
   .vlad-info { flex: 1; margin-left: 10px; }
   .vlad-info h3 { margin: 0 0 5px 0; font-size: 14px; }
   .vlad-info p { margin: 0; font-size: 12px; color: #aaa; }
+  
   .vlad-btn {
     background: #FFE14D; color: #000; border: none; padding: 8px 12px;
     border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px;
   }
   .vlad-btn.active { background: #4ade80; }
   .vlad-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+  /* --- СПИСОК ЛИДЕРОВ --- */
+  #leaderboardList { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+  #leaderboardList li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px; margin-bottom: 8px; border-radius: 12px;
+    background: rgba(255,255,255,0.05); font-size: 15px;
+  }
+  #leaderboardList li:nth-child(1) { background: rgba(255, 215, 0, 0.2); border: 1px solid #FFD700; }
+  #leaderboardList li:nth-child(2) { background: rgba(192, 192, 192, 0.15); border: 1px solid #C0C0C0; }
+  #leaderboardList li:nth-child(3) { background: rgba(205, 127, 50, 0.15); border: 1px solid #CD7F32; }
+  
+  .rank { font-weight: 900; width: 30px; text-align: center; }
+  .player-name { flex: 1; margin-left: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player-score { font-weight: 900; color: #FFE14D; }
 </style>
 </head>
 <body>
 
-  <!-- Главный экран -->
+  <div class="profile-header">
+    <div class="level-info">
+      <span>Уровень: <span id="levelDisplay">0</span></span>
+      <span><span id="xpDisplay">0</span> / <span id="xpNeeded">100</span> XP</span>
+    </div>
+    <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpBar"></div></div>
+  </div>
+
   <div>
     <div class="score" id="score">0</div>
-    <div class="label">Тапни по картинке</div>
+    <div class="label" id="clickLabel">Тапни по картинке (+1)</div>
   </div>
 
   <div class="stage" id="stage">
@@ -144,64 +172,91 @@
     </div>
   </div>
 
-  <!-- Блок снизу: надпись и кнопка магазина -->
   <div class="bottom-area">
     <div class="hint">Прогресс сохраняется автоматически</div>
-    <button id="shopBtn" onclick="openShop()">🛒 Магазин</button>
+    <div class="btn-row">
+      <button id="shopBtn" onclick="openShop()">🛒 Магазин</button>
+      <button id="topBtn" onclick="openLeaderboard()">🏆 Топ</button>
+    </div>
   </div>
 
-  <!-- Магазин -->
+  <!-- МАГАЗИН -->
   <div id="shopModal" class="modal">
     <div class="modal-content">
-      <h2>Магозин скинов</h2>
+      <h2>Выбери скин</h2>
       <div class="vlad-list" id="vladList"></div>
       <div class="close-btn" onclick="closeShop()">Закрыть</div>
     </div>
   </div>
 
+  <!-- ТОП ИГРОКОВ -->
+  <div id="leaderboardModal" class="modal">
+    <div class="modal-content">
+      <h2>🏆 Топ 10 игроков</h2>
+      <ul id="leaderboardList">
+        <li style="justify-content:center;">Загрузка...</li>
+      </ul>
+      <div class="close-btn" onclick="closeLeaderboard()">Закрыть</div>
+    </div>
+  </div>
+
 <script>
+// ==========================================
+// ВСТАВЬ СВОИ КЛЮЧИ SUPABASE ЗДЕСЬ
+// ==========================================
+const SUPABASE_URL = 'https://wdffazkzmtamseqsxxhg.supabase.co'; 
+const SUPABASE_KEY = 'sb_publishable_6c6Cpbyfpp0-w37fpKDQyQ_do90RWeJ'; 
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==========================================
+// TELEGRAM
+// ==========================================
 const tg = window.Telegram?.WebApp;
+let user = null;
 if (tg) {
-  tg.ready();
-  tg.expand();
-  tg.setHeaderColor?.('#11152b');
-  tg.setBackgroundColor?.('#11152b');
+  tg.ready(); tg.expand();
+  tg.setHeaderColor?.('#11152b'); tg.setBackgroundColor?.('#11152b');
   try { tg.disableVerticalSwipes?.(); } catch(e){}
+  user = tg.initDataUnsafe?.user;
 }
 
 const $ = id => document.getElementById(id);
-const els = { score:$('score'), stage:$('stage'), target:$('target'), mainImage:$('mainImage') };
-
-const STORAGE_KEY = 'tap-score-v5'; 
-let state = { 
-  score: 0, 
-  perClick: 1, 
-  unlocked: ['1'], // По умолчанию куплен первый владик (id: '1')
-  current: '1' 
+const els = { 
+  score:$('score'), stage:$('stage'), target:$('target'), mainImage:$('mainImage'), clickLabel:$('clickLabel'),
+  levelDisplay:$('levelDisplay'), xpDisplay:$('xpDisplay'), xpNeeded:$('xpNeeded'), xpBar:$('xpBar')
 };
 
+const STORAGE_KEY = 'tap-score-v11'; 
+let state = { 
+  score: 0, 
+  unlocked: ['1'], 
+  current: '1',
+  level: 0,
+  xp: 0,
+  timePlayed: 0 
+};
+
+const dbId = user ? user.id.toString() : 'test_user';
+const dbUsername = user && user.username ? user.username : '';
+const dbFirstName = user ? (user.first_name || 'Игрок') : 'Тестер';
+
+const XP_PER_CLICK = 1;       
+const XP_PER_MINUTE = 5;      
+const XP_PER_BUY = 500;       
+
+function getXpNeeded(level) {
+  return Math.floor(100 * Math.pow(1.2, level)); 
+}
+
 // ==========================================
-// СПИСОК ВЛАДИКОВ (Здесь всё исправлено)
+// СПИСОК СКИНОВ
 // ==========================================
 const VLADS = [
-  { 
-    id: '1', 
-    name: 'Влад дрипчик', 
-    price: 0, 
-    src: 'VladGopnik.jpg' 
-  },
-  { 
-    id: '2', 
-    name: 'Арсэн Дрип', 
-    price: 25000, 
-    src: 'arsen.jpg' 
-  },
-  {
-    id: '3',
-    name: 'Веринский прайм',
-    price: 40000,
-    src: 'verinskiPrime.jpg' // ВАЖНО: картинку на GitHub назови verinsky.jpg (английскими буквами!)
-  }
+  { id: '1', name: 'Влад дрипчик', price: 0, multiplier: 1, src: 'VladGopnik.jpg' },
+  { id: '2', name: 'Арсэн Дрип', price: 25000, multiplier: 2, src: 'arsen.jpg' },
+  { id: '3', name: 'Веринский прайм', price: 40000, multiplier: 4, src: 'verinskiPrime.jpg' },
+  { id: '4', name: 'Никита', price: 60000, multiplier: 5, src: 'hikiya.jpg' },
+  { id: '5', name: 'Костя', price: 80000, multiplier: 10, src: 'kokosik.png' }
 ];
 // ==========================================
 
@@ -210,17 +265,18 @@ function loadScore() {
     if (dataStr) {
       try {
         const parsed = JSON.parse(dataStr);
-        state.score = parseInt(parsed.score) || 0;
-        state.perClick = parseInt(parsed.perClick) || 1;
-        
-        if (parsed.unlocked && Array.isArray(parsed.unlocked)) {
-            state.unlocked = parsed.unlocked;
-        }
-        if (parsed.current) state.current = parsed.current;
+        state = { ...state, ...parsed }; 
+        if (typeof state.xp === 'undefined') state.xp = 0;
+        if (typeof state.level === 'undefined') state.level = 0;
+        if (typeof state.timePlayed === 'undefined') state.timePlayed = 0;
       } catch(e){}
     }
     applyVlad(state.current);
+    updateLevelUI();
     render();
+    
+    // После загрузки локальных данных синхронизируемся с базой
+    syncWithDB(); 
   };
 
   if (tg?.CloudStorage) {
@@ -237,10 +293,46 @@ let saveTimer = null;
 function saveScore() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
+    // Сохраняем локально
     const data = JSON.stringify(state);
     if (tg?.CloudStorage) tg.CloudStorage.setItem(STORAGE_KEY, data, () => {});
     try { localStorage.setItem(STORAGE_KEY, data); } catch(e){}
-  }, 400);
+
+    // Отправляем в базу данных
+    supabaseClient.from('players').upsert({
+      id: dbId, 
+      username: dbUsername, 
+      first_name: dbFirstName,
+      score: state.score, 
+      last_active: new Date().toISOString()
+    }).then(({error}) => {
+      if (error) console.warn('Ошибка сохранения в БД:', error);
+    });
+  }, 1000);
+}
+
+// Синхронизация при старте (чтобы подтянуть очки из базы, если играли с другого устройства)
+async function syncWithDB() {
+  try {
+    const { data, error } = await supabaseClient.from('players').select('*').eq('id', dbId).single();
+    if (data) {
+      // Если в базе очков больше, чем локально - берем их
+      if (data.score > state.score) {
+        state.score = data.score;
+        render();
+      }
+      // Обновляем инфу на случай если ник изменился
+      await supabaseClient.from('players').upsert({
+        id: dbId, username: dbUsername, first_name: dbFirstName,
+        score: state.score, last_active: new Date().toISOString()
+      });
+    } else if (!error || error.code === 'PGRST116') {
+      // Если игрока нет, создаем его
+      await supabaseClient.from('players').insert([{ 
+        id: dbId, username: dbUsername, first_name: dbFirstName, score: state.score 
+      }]);
+    }
+  } catch(e) { console.warn('БД недоступна'); }
 }
 
 const fmt = n => n.toLocaleString('ru-RU');
@@ -253,14 +345,53 @@ function render(bump = false) {
   }
 }
 
-// --- МАГАЗИН ---
-function openShop() {
-  $('shopModal').style.display = 'flex';
-  renderShop();
+// ==========================================
+// СИСТЕМА УРОВНЕЙ
+// ==========================================
+function addXP(amount) {
+  state.xp += amount;
+  let needed = getXpNeeded(state.level);
+  let leveledUp = false;
+
+  while (state.xp >= needed) {
+    state.xp -= needed;
+    state.level++;
+    leveledUp = true;
+    needed = getXpNeeded(state.level);
+  }
+
+  if (leveledUp) {
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    updateClickLabel(); 
+  }
+
+  updateLevelUI();
+  saveScore();
 }
-function closeShop() {
-  $('shopModal').style.display = 'none';
+
+function updateLevelUI() {
+  els.levelDisplay.textContent = state.level;
+  const needed = getXpNeeded(state.level);
+  els.xpDisplay.textContent = Math.floor(state.xp);
+  els.xpNeeded.textContent = needed;
+  
+  const percent = Math.min(100, (state.xp / needed) * 100);
+  els.xpBar.style.width = percent + '%';
 }
+
+setInterval(() => {
+  state.timePlayed += 1; 
+  if (state.timePlayed % 60 === 0) {
+    addXP(XP_PER_MINUTE);
+  }
+}, 1000);
+
+// ==========================================
+// МАГАЗИН
+// ==========================================
+function openShop() { $('shopModal').style.display = 'flex'; renderShop(); }
+function closeShop() { $('shopModal').style.display = 'none'; }
 
 function renderShop() {
   const list = $('vladList');
@@ -276,8 +407,8 @@ function renderShop() {
     div.innerHTML = `
       <img src="${vlad.src}">
       <div class="vlad-info">
-        <h3>${vlad.name}</h3>
-        <p>${isBought ? 'Куплено' : 'Цена: ' + vlad.price}</p>
+        <h3>${vlad.name} (x${vlad.multiplier})</h3>
+        <p>${isBought ? 'Куплено' : 'Цена: ' + fmt(vlad.price)}</p>
       </div>
       <button class="vlad-btn ${isActive ? 'active' : ''}" 
               onclick="handleVlad('${vlad.id}')"
@@ -305,6 +436,7 @@ function handleVlad(id) {
       state.current = id;
       applyVlad(id);
       render();
+      addXP(XP_PER_BUY);
       tg?.HapticFeedback?.notificationOccurred?.('success');
     } else {
       tg?.HapticFeedback?.notificationOccurred?.('error');
@@ -319,6 +451,66 @@ function handleVlad(id) {
 function applyVlad(id) {
   const vlad = VLADS.find(v => v.id === id) || VLADS[0];
   els.mainImage.src = vlad.src; 
+  updateClickLabel();
+}
+
+function updateClickLabel() {
+  const vlad = VLADS.find(v => v.id === state.current) || VLADS[0];
+  const totalClickPower = vlad.multiplier + state.level;
+  els.clickLabel.textContent = `Тапни по картинке (+${totalClickPower})`;
+}
+
+// ==========================================
+// ТАБЛИЦА ЛИДЕРОВ
+// ==========================================
+function openLeaderboard() {
+  $('leaderboardModal').style.display = 'flex';
+  loadLeaderboard();
+}
+function closeLeaderboard() {
+  $('leaderboardModal').style.display = 'none';
+}
+
+async function loadLeaderboard() {
+  const list = $('leaderboardList');
+  list.innerHTML = '<li style="justify-content:center;">Загрузка...</li>';
+
+  try {
+    // Запрашиваем топ-10, сортируя по убыванию очков
+    const { data, error } = await supabaseClient
+      .from('players')
+      .select('*')
+      .order('score', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+    
+    if (!data || data.length === 0) { 
+      list.innerHTML = '<li style="justify-content:center;">Пока никто не играл</li>'; 
+      return; 
+    }
+
+    list.innerHTML = '';
+    data.forEach((player, index) => {
+      const li = document.createElement('li');
+      let rankText = index + 1;
+      if (index === 0) rankText = '🥇'; 
+      if (index === 1) rankText = '🥈'; 
+      if (index === 2) rankText = '🥉';
+      
+      const displayName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
+      
+      li.innerHTML = `
+        <span class="rank">${rankText}</span>
+        <span class="player-name">${displayName}</span>
+        <span class="player-score">${fmt(player.score)}</span>
+      `;
+      list.appendChild(li);
+    });
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<li style="justify-content:center; color:#ff6b9d;">Ошибка загрузки</li>';
+  }
 }
 
 // --- ИГРА ---
@@ -348,18 +540,26 @@ function spawnParticles(x, y) {
     p.addEventListener('animationend', () => p.remove()); els.stage.appendChild(p);
   }
 }
-function spawnFloater(x, y) {
+function spawnFloater(x, y, power) {
   const f = document.createElement('div'); f.className = 'floater';
-  f.textContent = '+' + state.perClick; f.style.left = x + 'px'; f.style.top  = y + 'px';
+  f.textContent = '+' + power; f.style.left = x + 'px'; f.style.top  = y + 'px';
   f.addEventListener('animationend', () => f.remove()); els.stage.appendChild(f);
 }
 
 function doClick(x, y) {
-  state.score += state.perClick;
-  render(true); spawnParticles(x, y); spawnFloater(x, y); playSound();
+  const currentVlad = VLADS.find(v => v.id === state.current) || VLADS[0];
+  const clickPower = currentVlad.multiplier + state.level;
+
+  state.score += clickPower;
+  render(true); 
+  spawnParticles(x, y); 
+  spawnFloater(x, y, clickPower); 
+  playSound();
+  
+  addXP(XP_PER_CLICK); 
+
   tg?.HapticFeedback?.impactOccurred?.('light');
   els.target.classList.remove('pop'); void els.target.offsetWidth; els.target.classList.add('pop');
-  saveScore();
 }
 
 els.target.addEventListener('pointerdown', e => {
