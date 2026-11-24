@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Тапалка</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<!-- Подключаем Supabase (база данных) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -18,12 +17,32 @@
     touch-action:manipulation;min-height:100dvh;
   }
   
+  /* Шапка с ником и префиксом */
+  .user-header {
+    position: absolute; top: 15px; left: 15px;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05); padding: 6px 12px;
+    border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+    font-size: 14px; font-weight: bold; z-index: 10;
+  }
+  .username-text { color: #fff; }
+  .prefix-badge {
+    color: #FFE14D; background: rgba(255,225,77,0.1); padding: 2px 6px;
+    border-radius: 6px; font-size: 12px; cursor: pointer; transition: 0.2s;
+    border: 1px solid rgba(255,225,77,0.3);
+  }
+  .rebirth-badge {
+    color: #00e5ff; background: rgba(0,229,255,0.1); padding: 2px 6px;
+    border-radius: 6px; font-size: 12px; font-weight: bold;
+    border: 1px solid rgba(0,229,255,0.3);
+  }
+
   /* Панель профиля */
   .profile-header {
     display: flex; flex-direction: column; align-items: center;
     width: 100%; max-width: 300px; background: rgba(255, 255, 255, 0.05);
     padding: 12px; border-radius: 15px; border: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 5px;
+    margin-top: 30px; margin-bottom: 5px;
   }
   .level-info {
     display: flex; justify-content: space-between; width: 100%;
@@ -87,16 +106,14 @@
   }
   .hint{font-size:12px;opacity:.35;text-align:center;}
 
-  .btn-row {
-    display: flex; gap: 10px;
-  }
+  .btn-row { display: flex; gap: 8px; }
 
-  #shopBtn, #topBtn {
+  #shopBtn, #prefixBtn, #topBtn {
     background: rgba(255, 225, 77, 0.15); border: 1px solid #FFE14D;
-    color: #FFE14D; padding: 10px 20px; border-radius: 12px;
-    font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s;
+    color: #FFE14D; padding: 10px 12px; border-radius: 12px;
+    font-weight: bold; font-size: 13px; cursor: pointer; transition: 0.2s;
   }
-  #shopBtn:active, #topBtn:active { transform: scale(0.95); }
+  #shopBtn:active, #prefixBtn:active, #topBtn:active { transform: scale(0.95); }
 
   /* --- МОДАЛЬНЫЕ ОКНА --- */
   .modal {
@@ -107,9 +124,21 @@
   .modal-content {
     background: #11152b; border: 1px solid rgba(255, 225, 77, 0.3);
     padding: 20px; border-radius: 20px; width: 100%; max-width: 350px;
-    max-height: 80vh; display: flex; flex-direction: column;
+    max-height: 85vh; display: flex; flex-direction: column;
   }
-  .modal h2 { color: #FFE14D; margin-bottom: 15px; text-align: center; }
+  .modal h2 { color: #FFE14D; margin-bottom: 5px; text-align: center; font-size: 22px;}
+  
+  .title-info {
+    text-align: center; font-size: 13px; color: #fff; margin-bottom: 10px; line-height: 1.4;
+  }
+  .title-info span { color: #ffd700; font-weight: bold; }
+  
+  .reset-timer {
+    text-align: center; font-size: 13px; color: #ff6b9d; font-weight: bold;
+    background: rgba(255, 107, 157, 0.1); padding: 8px; border-radius: 10px;
+    border: 1px solid rgba(255, 107, 157, 0.3); margin-bottom: 15px;
+  }
+
   .close-btn { margin-top: 15px; text-align: center; color: #ff6b9d; cursor: pointer; font-weight: bold; padding: 10px;}
   
   .vlad-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 5px;}
@@ -134,7 +163,16 @@
   .vlad-btn.active { background: #4ade80; }
   .vlad-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
 
-  /* --- СПИСОК ЛИДЕРОВ --- */
+  /* Кнопка перерождения */
+  .rebirth-btn {
+    background: linear-gradient(135deg, #ff6b9d, #c44569); color: #fff;
+    border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px;
+    cursor: pointer; margin-top: 20px; text-align: center; transition: 0.2s;
+    box-shadow: 0 4px 15px rgba(196, 69, 105, 0.4);
+  }
+  .rebirth-btn:active { transform: scale(0.95); }
+  .rebirth-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+
   #leaderboardList { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
   #leaderboardList li {
     display: flex; justify-content: space-between; align-items: center;
@@ -151,6 +189,12 @@
 </style>
 </head>
 <body>
+
+  <div class="user-header" id="userHeader" style="display: none;">
+    <span class="username-text" id="displayUsername">@user</span>
+    <span class="prefix-badge" id="displayPrefix" style="display:none;"></span>
+    <span class="rebirth-badge" id="displayRebirth" style="display:none;"></span>
+  </div>
 
   <div class="profile-header">
     <div class="level-info">
@@ -175,17 +219,31 @@
   <div class="bottom-area">
     <div class="hint">Прогресс сохраняется автоматически</div>
     <div class="btn-row">
-      <button id="shopBtn" onclick="openShop()">🛒 Магазин</button>
+      <button id="shopBtn" onclick="openShop()">🛒 Скины</button>
+      <button id="prefixBtn" onclick="openPrefixes()">🏷️ Префиксы</button>
       <button id="topBtn" onclick="openLeaderboard()">🏆 Топ</button>
     </div>
   </div>
 
-  <!-- МАГАЗИН -->
+  <!-- МАГАЗИН СКИНОВ (с кнопкой перерождения) -->
   <div id="shopModal" class="modal">
     <div class="modal-content">
       <h2>Выбери скин</h2>
       <div class="vlad-list" id="vladList"></div>
+      
+      <!-- Кнопка перерождения -->
+      <button class="rebirth-btn" id="rebirthBtn" onclick="handleRebirth()">🌀 Переродиться</button>
+      
       <div class="close-btn" onclick="closeShop()">Закрыть</div>
+    </div>
+  </div>
+
+  <!-- МАГАЗИН ПРЕФИКСОВ -->
+  <div id="prefixModal" class="modal">
+    <div class="modal-content">
+      <h2>Выбери префикс</h2>
+      <div class="vlad-list" id="prefixList"></div>
+      <div class="close-btn" onclick="closePrefixes()">Закрыть</div>
     </div>
   </div>
 
@@ -193,6 +251,8 @@
   <div id="leaderboardModal" class="modal">
     <div class="modal-content">
       <h2>🏆 Топ 10 игроков</h2>
+      <div class="title-info">1 место получит титул <span>[дед мороз  🎅]</span></div>
+      <div class="reset-timer" id="resetTimer">До сброса: загрузка...</div>
       <ul id="leaderboardList">
         <li style="justify-content:center;">Загрузка...</li>
       </ul>
@@ -202,10 +262,10 @@
 
 <script>
 // ==========================================
-// ВСТАВЬ СВОИ КЛЮЧИ SUPABASE ЗДЕСЬ
+// КЛЮЧИ SUPABASE
 // ==========================================
 const SUPABASE_URL = 'https://wdffazkzmtamseqsxxhg.supabase.co'; 
-const SUPABASE_KEY = 'sb_publishable_6c6Cpbyfpp0-w37fpKDQyQ_do90RWeJ'; 
+const SUPABASE_KEY = 'sb_publishable_6c6Cpbyfpp0-w37fpKDQyQ_do90RWeJ';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
@@ -223,21 +283,27 @@ if (tg) {
 const $ = id => document.getElementById(id);
 const els = { 
   score:$('score'), stage:$('stage'), target:$('target'), mainImage:$('mainImage'), clickLabel:$('clickLabel'),
-  levelDisplay:$('levelDisplay'), xpDisplay:$('xpDisplay'), xpNeeded:$('xpNeeded'), xpBar:$('xpBar')
+  levelDisplay:$('levelDisplay'), xpDisplay:$('xpDisplay'), xpNeeded:$('xpNeeded'), xpBar:$('xpBar'),
+  resetTimer:$('resetTimer'), userHeader:$('userHeader'), displayUsername:$('displayUsername'), displayPrefix:$('displayPrefix'),
+  displayRebirth:$('displayRebirth'), rebirthBtn:$('rebirthBtn')
 };
 
-const STORAGE_KEY = 'tap-score-v11'; 
+const STORAGE_KEY = 'tap-score-v18'; 
 let state = { 
   score: 0, 
   unlocked: ['1'], 
   current: '1',
   level: 0,
   xp: 0,
-  timePlayed: 0 
+  timePlayed: 0,
+  unlockedPrefixes: ['1'], 
+  currentPrefix: '1',
+  hasAgusha: false,
+  rebirths: 0 // Количество перерождений
 };
 
 const dbId = user ? user.id.toString() : 'test_user';
-const dbUsername = user && user.username ? user.username : '';
+const dbUsername = user && user.username ? user.username : 'user';
 const dbFirstName = user ? (user.first_name || 'Игрок') : 'Тестер';
 
 const XP_PER_CLICK = 1;       
@@ -248,6 +314,11 @@ function getXpNeeded(level) {
   return Math.floor(100 * Math.pow(1.2, level)); 
 }
 
+// Стоимость перерождения: 10 000 * 2^rebirths
+function getRebirthCost() {
+  return 10000 * Math.pow(2, state.rebirths);
+}
+
 // ==========================================
 // СПИСОК СКИНОВ
 // ==========================================
@@ -256,9 +327,79 @@ const VLADS = [
   { id: '2', name: 'Арсэн Дрип', price: 25000, multiplier: 2, src: 'arsen.jpg' },
   { id: '3', name: 'Веринский прайм', price: 40000, multiplier: 4, src: 'verinskiPrime.jpg' },
   { id: '4', name: 'Никита', price: 60000, multiplier: 5, src: 'hikiya.jpg' },
-  { id: '5', name: 'Костя', price: 80000, multiplier: 10, src: 'kokosik.png' }
+  { id: '5', name: 'Костя', price: 80000, multiplier: 10, src: 'kokosik.png' },
+  { id: '6', name: 'Маленький матео', price: 120000, multiplier: 20, src: 'Mateooo.png'},
+  { id: '7', name: 'Егор', price: 160000, multiplier: 25, src: 'Egor.png'}
+];
+
+// ==========================================
+// СПИСОК ПРЕФИКСОВ
+// ==========================================
+const PREFIXES = [
+  { id: '1', name: '[клоун]', price: 1000 },
+  { id: '2', name: '[ниже плинтуса]', price: 5000 },
+  { id: '3', name: '[бариска]', price: 10000 },
+  { id: '4', name: '[легенда]', price: 15000 },
+  { id: '5', name: '[бог нямы]', price: 50000 },
+  { id: '6', name: '[дед мороз] 🎅', price: 0, hidden: true } 
 ];
 // ==========================================
+
+function updateHeaderUI() {
+  if (user) {
+    els.userHeader.style.display = 'flex';
+    els.displayUsername.textContent = user.username ? `@${user.username}` : user.first_name;
+  } else {
+    els.userHeader.style.display = 'flex';
+    els.displayUsername.textContent = '@test_user';
+  }
+  
+  const p = PREFIXES.find(x => x.id === state.currentPrefix) || PREFIXES[0];
+  els.displayPrefix.style.display = 'inline-block';
+  els.displayPrefix.textContent = p.name;
+  
+  if (state.currentPrefix === '6') {
+    els.displayPrefix.style.color = '#ffd700';
+  } else {
+    els.displayPrefix.style.color = '#FFE14D';
+  }
+
+  // Показываем перерождения, если они есть
+  if (state.rebirths > 0) {
+    els.displayRebirth.style.display = 'inline-block';
+    els.displayRebirth.textContent = `🌀 x${Math.pow(2, state.rebirths)}`;
+  } else {
+    els.displayRebirth.style.display = 'none';
+  }
+}
+
+async function checkAgushaPrefix() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('players')
+      .select('id, agusha_owner')
+      .order('score', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) throw error;
+
+    if (data && data.id === dbId) {
+      if (!state.hasAgusha) {
+        state.hasAgusha = true;
+        if (!state.unlockedPrefixes.includes('6')) state.unlockedPrefixes.push('6');
+        saveScore();
+      }
+      if (state.currentPrefix === '1') {
+        state.currentPrefix = '6';
+        updateHeaderUI();
+      }
+      if (!data.agusha_owner) {
+        await supabaseClient.from('players').update({ agusha_owner: true }).eq('id', dbId);
+      }
+    }
+  } catch(e) {}
+}
 
 function loadScore() {
   const onLoad = (dataStr) => {
@@ -266,17 +407,15 @@ function loadScore() {
       try {
         const parsed = JSON.parse(dataStr);
         state = { ...state, ...parsed }; 
-        if (typeof state.xp === 'undefined') state.xp = 0;
-        if (typeof state.level === 'undefined') state.level = 0;
-        if (typeof state.timePlayed === 'undefined') state.timePlayed = 0;
+        if (typeof state.rebirths === 'undefined') state.rebirths = 0;
       } catch(e){}
     }
     applyVlad(state.current);
     updateLevelUI();
+    updateHeaderUI(); 
     render();
-    
-    // После загрузки локальных данных синхронизируемся с базой
     syncWithDB(); 
+    setTimeout(checkAgushaPrefix, 1500); 
   };
 
   if (tg?.CloudStorage) {
@@ -293,17 +432,20 @@ let saveTimer = null;
 function saveScore() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    // Сохраняем локально
     const data = JSON.stringify(state);
     if (tg?.CloudStorage) tg.CloudStorage.setItem(STORAGE_KEY, data, () => {});
     try { localStorage.setItem(STORAGE_KEY, data); } catch(e){}
 
-    // Отправляем в базу данных
+    const currentPrefixObj = PREFIXES.find(x => x.id === state.currentPrefix) || PREFIXES[0];
+    
     supabaseClient.from('players').upsert({
       id: dbId, 
       username: dbUsername, 
       first_name: dbFirstName,
       score: state.score, 
+      prefix: currentPrefixObj.name,
+      agusha_owner: state.hasAgusha, 
+      rebirths: state.rebirths, // Сохраняем перерождения в БД
       last_active: new Date().toISOString()
     }).then(({error}) => {
       if (error) console.warn('Ошибка сохранения в БД:', error);
@@ -311,25 +453,33 @@ function saveScore() {
   }, 1000);
 }
 
-// Синхронизация при старте (чтобы подтянуть очки из базы, если играли с другого устройства)
 async function syncWithDB() {
   try {
     const { data, error } = await supabaseClient.from('players').select('*').eq('id', dbId).single();
     if (data) {
-      // Если в базе очков больше, чем локально - берем их
       if (data.score > state.score) {
         state.score = data.score;
         render();
       }
-      // Обновляем инфу на случай если ник изменился
+      if (data.agusha_owner && !state.hasAgusha) {
+        state.hasAgusha = true;
+        if (!state.unlockedPrefixes.includes('6')) state.unlockedPrefixes.push('6');
+      }
+      if (data.rebirths && data.rebirths > state.rebirths) {
+        state.rebirths = data.rebirths;
+        updateHeaderUI();
+      }
+      
+      const currentPrefixObj = PREFIXES.find(x => x.id === state.currentPrefix) || PREFIXES[0];
       await supabaseClient.from('players').upsert({
         id: dbId, username: dbUsername, first_name: dbFirstName,
-        score: state.score, last_active: new Date().toISOString()
+        score: state.score, prefix: currentPrefixObj.name, agusha_owner: state.hasAgusha, rebirths: state.rebirths, last_active: new Date().toISOString()
       });
     } else if (!error || error.code === 'PGRST116') {
-      // Если игрока нет, создаем его
+      const currentPrefixObj = PREFIXES.find(x => x.id === state.currentPrefix) || PREFIXES[0];
       await supabaseClient.from('players').insert([{ 
-        id: dbId, username: dbUsername, first_name: dbFirstName, score: state.score 
+        id: dbId, username: dbUsername, first_name: dbFirstName, 
+        score: state.score, prefix: currentPrefixObj.name, agusha_owner: state.hasAgusha, rebirths: state.rebirths
       }]);
     }
   } catch(e) { console.warn('БД недоступна'); }
@@ -345,9 +495,6 @@ function render(bump = false) {
   }
 }
 
-// ==========================================
-// СИСТЕМА УРОВНЕЙ
-// ==========================================
 function addXP(amount) {
   state.xp += amount;
   let needed = getXpNeeded(state.level);
@@ -375,22 +522,21 @@ function updateLevelUI() {
   const needed = getXpNeeded(state.level);
   els.xpDisplay.textContent = Math.floor(state.xp);
   els.xpNeeded.textContent = needed;
-  
   const percent = Math.min(100, (state.xp / needed) * 100);
   els.xpBar.style.width = percent + '%';
 }
 
 setInterval(() => {
   state.timePlayed += 1; 
-  if (state.timePlayed % 60 === 0) {
-    addXP(XP_PER_MINUTE);
-  }
+  if (state.timePlayed % 60 === 0) addXP(XP_PER_MINUTE);
 }, 1000);
 
-// ==========================================
-// МАГАЗИН
-// ==========================================
-function openShop() { $('shopModal').style.display = 'flex'; renderShop(); }
+// МАГАЗИН СКИНОВ И ПЕРЕРОЖДЕНИЕ
+function openShop() { 
+  $('shopModal').style.display = 'flex'; 
+  renderShop(); 
+  updateRebirthBtn();
+}
 function closeShop() { $('shopModal').style.display = 'none'; }
 
 function renderShop() {
@@ -420,10 +566,16 @@ function renderShop() {
   });
 }
 
+function updateRebirthBtn() {
+  const cost = getRebirthCost();
+  const canAfford = state.score >= cost;
+  els.rebirthBtn.textContent = `🌀 Переродиться (${fmt(cost)} очков)`;
+  els.rebirthBtn.disabled = !canAfford;
+}
+
 function handleVlad(id) {
   const vlad = VLADS.find(v => v.id === id);
   if (!vlad) return;
-
   const isBought = state.unlocked.includes(id);
 
   if (isBought) {
@@ -443,9 +595,45 @@ function handleVlad(id) {
       return;
     }
   }
-  
   saveScore();
   renderShop(); 
+  updateRebirthBtn();
+}
+
+// ФУНКЦИЯ ПЕРЕРОЖДЕНИЯ
+function handleRebirth() {
+  const cost = getRebirthCost();
+  if (state.score < cost) return;
+
+  const confirmRebirth = confirm(`Ты уверен, что хочешь переродиться?\n\nСбросится: Очки, Уровень, Скины, Префиксы.\nТы получишь: постоянный множитель x${Math.pow(2, state.rebirths + 1)}`);
+
+  if (confirmRebirth) {
+    state.score = 0;
+    state.level = 0;
+    state.xp = 0;
+    state.unlocked = ['1']; // Оставляем только первого владика
+    state.current = '1';
+    state.unlockedPrefixes = ['1']; // Оставляем только новичка
+    state.currentPrefix = '1';
+    state.hasAgusha = false;
+    state.rebirths += 1;
+
+    // Применяем сброс
+    applyVlad('1');
+    updateLevelUI();
+    updateHeaderUI();
+    render();
+    
+    // Сохраняем в облако
+    saveScore();
+    
+    // Обновляем кнопку
+    renderShop();
+    updateRebirthBtn();
+
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+    alert(`Успешное перерождение! Теперь твои тапы умножаются на x${Math.pow(2, state.rebirths)}!`);
+  }
 }
 
 function applyVlad(id) {
@@ -456,39 +644,123 @@ function applyVlad(id) {
 
 function updateClickLabel() {
   const vlad = VLADS.find(v => v.id === state.current) || VLADS[0];
-  const totalClickPower = vlad.multiplier + state.level;
+  // Считаем силу клика: (Множитель скина + Уровень) * Множитель перерождений
+  const rebirthMult = Math.pow(2, state.rebirths);
+  const totalClickPower = (vlad.multiplier + state.level) * rebirthMult;
   els.clickLabel.textContent = `Тапни по картинке (+${totalClickPower})`;
 }
 
-// ==========================================
-// ТАБЛИЦА ЛИДЕРОВ
-// ==========================================
+// МАГАЗИН ПРЕФИКСОВ
+function openPrefixes() { $('prefixModal').style.display = 'flex'; renderPrefixes(); }
+function closePrefixes() { $('prefixModal').style.display = 'none'; }
+
+function renderPrefixes() {
+  const list = $('prefixList');
+  list.innerHTML = '';
+
+  PREFIXES.forEach(p => {
+    if (p.hidden && !state.hasAgusha) return;
+
+    const isBought = state.unlockedPrefixes.includes(p.id);
+    const isActive = state.currentPrefix === p.id;
+    const canBuy = state.score >= p.price;
+
+    const div = document.createElement('div');
+    div.className = 'vlad-item';
+    div.innerHTML = `
+      <div class="vlad-info">
+        <h3 style="font-size: 16px; ${p.id === '6' ? 'color:#ffd700;' : ''}">${p.name}</h3>
+        <p>${isBought ? 'Куплено' : (p.price === 0 ? 'Бесплатно' : 'Цена: ' + fmt(p.price))}</p>
+      </div>
+      <button class="vlad-btn ${isActive ? 'active' : ''}" 
+              onclick="handlePrefix('${p.id}')"
+              ${!isBought && !canBuy ? 'disabled' : ''}>
+        ${isActive ? 'Выбран' : (isBought ? 'Надеть' : 'Купить')}
+      </button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function handlePrefix(id) {
+  const prefix = PREFIXES.find(p => p.id === id);
+  if (!prefix) return;
+  const isBought = state.unlockedPrefixes.includes(id);
+
+  if (isBought) {
+    state.currentPrefix = id;
+    updateHeaderUI();
+  } else {
+    if (state.score >= prefix.price) {
+      state.score -= prefix.price;
+      state.unlockedPrefixes.push(id);
+      state.currentPrefix = id;
+      updateHeaderUI();
+      render();
+      tg?.HapticFeedback?.notificationOccurred?.('success');
+    } else {
+      tg?.HapticFeedback?.notificationOccurred?.('error');
+      return;
+    }
+  }
+  saveScore();
+  renderPrefixes(); 
+}
+
+// ТАЙМЕР И ТОП
+let resetTimeInterval = null;
 function openLeaderboard() {
   $('leaderboardModal').style.display = 'flex';
   loadLeaderboard();
+  fetchResetTime(); 
 }
 function closeLeaderboard() {
   $('leaderboardModal').style.display = 'none';
+  if (resetTimeInterval) clearInterval(resetTimeInterval); 
+}
+
+async function fetchResetTime() {
+  try {
+    const { data, error } = await supabaseClient.from('game_settings').select('last_reset').eq('id', 'global_timer').single();
+    if (error) throw error;
+    if (!data) return;
+
+    const lastReset = new Date(data.last_reset).getTime();
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const nextReset = lastReset + (3 * 24 * 60 * 60 * 1000); 
+      const diff = nextReset - now;
+
+      if (diff <= 0) {
+        els.resetTimer.textContent = 'Сброс...';
+        setTimeout(() => location.reload(), 5000);
+        clearInterval(resetTimeInterval);
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const mins = Math.floor((diff / 1000 / 60) % 60);
+      const secs = Math.floor((diff / 1000) % 60);
+
+      els.resetTimer.textContent = `До сброса: ${days}д ${hours}ч ${mins}м ${secs}с`;
+    };
+
+    updateTimer(); 
+    if (resetTimeInterval) clearInterval(resetTimeInterval);
+    resetTimeInterval = setInterval(updateTimer, 1000); 
+  } catch (e) {
+    els.resetTimer.textContent = 'Таймер недоступен';
+  }
 }
 
 async function loadLeaderboard() {
   const list = $('leaderboardList');
   list.innerHTML = '<li style="justify-content:center;">Загрузка...</li>';
-
   try {
-    // Запрашиваем топ-10, сортируя по убыванию очков
-    const { data, error } = await supabaseClient
-      .from('players')
-      .select('*')
-      .order('score', { ascending: false })
-      .limit(10);
-
+    const { data, error } = await supabaseClient.from('players').select('*').order('score', { ascending: false }).limit(10);
     if (error) throw error;
-    
-    if (!data || data.length === 0) { 
-      list.innerHTML = '<li style="justify-content:center;">Пока никто не играл</li>'; 
-      return; 
-    }
+    if (!data || data.length === 0) { list.innerHTML = '<li style="justify-content:center;">Пока никто не играл</li>'; return; }
 
     list.innerHTML = '';
     data.forEach((player, index) => {
@@ -498,22 +770,22 @@ async function loadLeaderboard() {
       if (index === 1) rankText = '🥈'; 
       if (index === 2) rankText = '🥉';
       
-      const displayName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
+      const pName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
       
-      li.innerHTML = `
-        <span class="rank">${rankText}</span>
-        <span class="player-name">${displayName}</span>
-        <span class="player-score">${fmt(player.score)}</span>
-      `;
+      let pPrefix = (player.prefix && player.prefix !== '') ? `<span style="color:#FFE14D; font-size:12px; margin-right:5px;">${player.prefix}</span>` : '';
+      if (index === 0) {
+        pPrefix = `<span style="color:#ffd700; font-size:12px; margin-right:5px;">[Агуша] 👑</span>`;
+      }
+      
+      li.innerHTML = `<span class="rank">${rankText}</span><span class="player-name">${pPrefix}${pName}</span><span class="player-score">${fmt(player.score)}</span>`;
       list.appendChild(li);
     });
   } catch(e) {
-    console.error(e);
     list.innerHTML = '<li style="justify-content:center; color:#ff6b9d;">Ошибка загрузки</li>';
   }
 }
 
-// --- ИГРА ---
+// ИГРА
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
@@ -548,16 +820,17 @@ function spawnFloater(x, y, power) {
 
 function doClick(x, y) {
   const currentVlad = VLADS.find(v => v.id === state.current) || VLADS[0];
-  const clickPower = currentVlad.multiplier + state.level;
-
+  
+  // Считаем силу клика с учетом перерождения
+  const rebirthMult = Math.pow(2, state.rebirths);
+  const clickPower = (currentVlad.multiplier + state.level) * rebirthMult;
+  
   state.score += clickPower;
   render(true); 
   spawnParticles(x, y); 
   spawnFloater(x, y, clickPower); 
   playSound();
-  
   addXP(XP_PER_CLICK); 
-
   tg?.HapticFeedback?.impactOccurred?.('light');
   els.target.classList.remove('pop'); void els.target.offsetWidth; els.target.classList.add('pop');
 }
