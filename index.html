@@ -17,7 +17,6 @@
     touch-action:manipulation;min-height:100dvh;
   }
   
-  /* Шапка с ником и префиксом */
   .user-header {
     position: absolute; top: 15px; left: 15px;
     display: flex; align-items: center; gap: 8px;
@@ -37,7 +36,6 @@
     border: 1px solid rgba(0,229,255,0.3);
   }
 
-  /* Панель профиля */
   .profile-header {
     display: flex; flex-direction: column; align-items: center;
     width: 100%; max-width: 300px; background: rgba(255, 255, 255, 0.05);
@@ -100,7 +98,6 @@
   }
   @keyframes floatUp{to{transform:translate(-50%,-160%) scale(1.4);opacity:0;}}
   
-  /* Блок с кнопками снизу */
   .bottom-area {
     display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 5px;
   }
@@ -115,7 +112,6 @@
   }
   #shopBtn:active, #prefixBtn:active, #topBtn:active { transform: scale(0.95); }
 
-  /* --- МОДАЛЬНЫЕ ОКНА --- */
   .modal {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.85); z-index: 999; padding: 20px;
@@ -163,7 +159,6 @@
   .vlad-btn.active { background: #4ade80; }
   .vlad-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
 
-  /* Кнопка перерождения */
   .rebirth-btn {
     background: linear-gradient(135deg, #ff6b9d, #c44569); color: #fff;
     border: none; padding: 15px; border-radius: 12px; font-weight: bold; font-size: 16px;
@@ -225,20 +220,15 @@
     </div>
   </div>
 
-  <!-- МАГАЗИН СКИНОВ (с кнопкой перерождения) -->
   <div id="shopModal" class="modal">
     <div class="modal-content">
       <h2>Выбери скин</h2>
       <div class="vlad-list" id="vladList"></div>
-      
-      <!-- Кнопка перерождения -->
       <button class="rebirth-btn" id="rebirthBtn" onclick="handleRebirth()">🌀 Переродиться</button>
-      
       <div class="close-btn" onclick="closeShop()">Закрыть</div>
     </div>
   </div>
 
-  <!-- МАГАЗИН ПРЕФИКСОВ -->
   <div id="prefixModal" class="modal">
     <div class="modal-content">
       <h2>Выбери префикс</h2>
@@ -247,11 +237,10 @@
     </div>
   </div>
 
-  <!-- ТОП ИГРОКОВ -->
   <div id="leaderboardModal" class="modal">
     <div class="modal-content">
       <h2>🏆 Топ 10 игроков</h2>
-      <div class="title-info">1 место получит титул <span>[дед мороз  🎅]</span></div>
+      <div class="title-info">1 место получит титул <span>[дед мороз 🎅]</span></div>
       <div class="reset-timer" id="resetTimer">До сброса: загрузка...</div>
       <ul id="leaderboardList">
         <li style="justify-content:center;">Загрузка...</li>
@@ -261,16 +250,10 @@
   </div>
 
 <script>
-// ==========================================
-// КЛЮЧИ SUPABASE
-// ==========================================
 const SUPABASE_URL = 'https://wdffazkzmtamseqsxxhg.supabase.co'; 
 const SUPABASE_KEY = 'sb_publishable_6c6Cpbyfpp0-w37fpKDQyQ_do90RWeJ';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ==========================================
-// TELEGRAM
-// ==========================================
 const tg = window.Telegram?.WebApp;
 let user = null;
 if (tg) {
@@ -288,7 +271,7 @@ const els = {
   displayRebirth:$('displayRebirth'), rebirthBtn:$('rebirthBtn')
 };
 
-const STORAGE_KEY = 'tap-score-v99'; 
+const STORAGE_KEY = 'tap-score-v18'; 
 let state = { 
   score: 0, 
   unlocked: ['1'], 
@@ -299,7 +282,7 @@ let state = {
   unlockedPrefixes: ['1'], 
   currentPrefix: '1',
   hasAgusha: false,
-  rebirths: 0 // Количество перерождений
+  rebirths: 0 
 };
 
 const dbId = user ? user.id.toString() : 'test_user';
@@ -314,14 +297,10 @@ function getXpNeeded(level) {
   return Math.floor(100 * Math.pow(1.2, level)); 
 }
 
-// Стоимость перерождения: 10 000 * 2^rebirths
 function getRebirthCost() {
   return 10000 * Math.pow(2, state.rebirths);
 }
 
-// ==========================================
-// СПИСОК СКИНОВ
-// ==========================================
 const VLADS = [
   { id: '1', name: 'Влад дрипчик', price: 0, multiplier: 1, src: 'VladGopnik.jpg' },
   { id: '2', name: 'Арсэн Дрип', price: 25000, multiplier: 2, src: 'arsen.jpg' },
@@ -332,9 +311,6 @@ const VLADS = [
   { id: '7', name: 'Егор', price: 160000, multiplier: 25, src: 'Egor.png'}
 ];
 
-// ==========================================
-// СПИСОК ПРЕФИКСОВ
-// ==========================================
 const PREFIXES = [
   { id: '1', name: '[клоун]', price: 1000 },
   { id: '2', name: '[ниже плинтуса]', price: 5000 },
@@ -343,7 +319,6 @@ const PREFIXES = [
   { id: '5', name: '[бог нямы]', price: 50000 },
   { id: '6', name: '[дед мороз] 🎅', price: 0, hidden: true } 
 ];
-// ==========================================
 
 function updateHeaderUI() {
   if (user) {
@@ -364,7 +339,6 @@ function updateHeaderUI() {
     els.displayPrefix.style.color = '#FFE14D';
   }
 
-  // Показываем перерождения, если они есть
   if (state.rebirths > 0) {
     els.displayRebirth.style.display = 'inline-block';
     els.displayRebirth.textContent = `🌀 x${Math.pow(2, state.rebirths)}`;
@@ -445,7 +419,7 @@ function saveScore() {
       score: state.score, 
       prefix: currentPrefixObj.name,
       agusha_owner: state.hasAgusha, 
-      rebirths: state.rebirths, // Сохраняем перерождения в БД
+      rebirths: state.rebirths,
       last_active: new Date().toISOString()
     }).then(({error}) => {
       if (error) console.warn('Ошибка сохранения в БД:', error);
@@ -531,7 +505,6 @@ setInterval(() => {
   if (state.timePlayed % 60 === 0) addXP(XP_PER_MINUTE);
 }, 1000);
 
-// МАГАЗИН СКИНОВ И ПЕРЕРОЖДЕНИЕ
 function openShop() { 
   $('shopModal').style.display = 'flex'; 
   renderShop(); 
@@ -600,7 +573,6 @@ function handleVlad(id) {
   updateRebirthBtn();
 }
 
-// ФУНКЦИЯ ПЕРЕРОЖДЕНИЯ
 function handleRebirth() {
   const cost = getRebirthCost();
   if (state.score < cost) return;
@@ -611,23 +583,20 @@ function handleRebirth() {
     state.score = 0;
     state.level = 0;
     state.xp = 0;
-    state.unlocked = ['1']; // Оставляем только первого владика
+    state.unlocked = ['1']; 
     state.current = '1';
-    state.unlockedPrefixes = ['1']; // Оставляем только новичка
+    state.unlockedPrefixes = ['1']; 
     state.currentPrefix = '1';
     state.hasAgusha = false;
     state.rebirths += 1;
 
-    // Применяем сброс
     applyVlad('1');
     updateLevelUI();
     updateHeaderUI();
     render();
     
-    // Сохраняем в облако
     saveScore();
     
-    // Обновляем кнопку
     renderShop();
     updateRebirthBtn();
 
@@ -644,13 +613,11 @@ function applyVlad(id) {
 
 function updateClickLabel() {
   const vlad = VLADS.find(v => v.id === state.current) || VLADS[0];
-  // Считаем силу клика: (Множитель скина + Уровень) * Множитель перерождений
   const rebirthMult = Math.pow(2, state.rebirths);
   const totalClickPower = (vlad.multiplier + state.level) * rebirthMult;
   els.clickLabel.textContent = `Тапни по картинке (+${totalClickPower})`;
 }
 
-// МАГАЗИН ПРЕФИКСОВ
 function openPrefixes() { $('prefixModal').style.display = 'flex'; renderPrefixes(); }
 function closePrefixes() { $('prefixModal').style.display = 'none'; }
 
@@ -707,7 +674,6 @@ function handlePrefix(id) {
   renderPrefixes(); 
 }
 
-// ТАЙМЕР И ТОП
 let resetTimeInterval = null;
 function openLeaderboard() {
   $('leaderboardModal').style.display = 'flex';
@@ -773,8 +739,9 @@ async function loadLeaderboard() {
       const pName = player.username ? `@${player.username}` : (player.first_name || 'Игрок');
       
       let pPrefix = (player.prefix && player.prefix !== '') ? `<span style="color:#FFE14D; font-size:12px; margin-right:5px;">${player.prefix}</span>` : '';
+      
       if (index === 0) {
-        pPrefix = `<span style="color:#ffd700; font-size:12px; margin-right:5px;">[Агуша] 👑</span>`;
+        pPrefix = `<span style="color:#00e5ff; font-size:12px; margin-right:5px;">[дед мороз] 🎅</span>`;
       }
       
       li.innerHTML = `<span class="rank">${rankText}</span><span class="player-name">${pPrefix}${pName}</span><span class="player-score">${fmt(player.score)}</span>`;
@@ -785,7 +752,6 @@ async function loadLeaderboard() {
   }
 }
 
-// ИГРА
 let audioCtx = null;
 function initAudio() {
   if (!audioCtx) try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
@@ -820,8 +786,6 @@ function spawnFloater(x, y, power) {
 
 function doClick(x, y) {
   const currentVlad = VLADS.find(v => v.id === state.current) || VLADS[0];
-  
-  // Считаем силу клика с учетом перерождения
   const rebirthMult = Math.pow(2, state.rebirths);
   const clickPower = (currentVlad.multiplier + state.level) * rebirthMult;
   
